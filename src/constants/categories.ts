@@ -55,8 +55,9 @@ export const TRAVEL_TYPES = ['flight', 'mrt', 'taxi', 'walk', 'hotel_move'];
 export const NON_TRAVEL_TYPES = ['visit', 'event', 'review', 'reserve', 'sync', 'lunch', 'dinner'];
 export const ALL_TYPES = [...NON_TRAVEL_TYPES, ...TRAVEL_TYPES];
 
-export function getCat(type: string): Category {
-  return CAT[type] || CAT.travel;
+export function getCat(type: string | undefined | null): Category {
+  if (!type) return { cls: 'tv', lbl: '移動', ico: 'walk' };
+  return CAT[type] || { cls: 'tv', lbl: '移動', ico: 'walk' };
 }
 
 export const DAYS: DayInfo[] = [

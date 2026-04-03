@@ -47,7 +47,7 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
 
   // Day summary stats
   function getDayStats(dayKey: string) {
-    const dayBlocks = blocks.filter(b => b.day === dayKey);
+    const dayBlocks = blocks.filter(b => b && b.day === dayKey);
     const visits = dayBlocks.filter(b => b.type === 'visit');
     const confirmed = visits.filter(b => b.detail?.trim());
     const travelTypes = ['flight', 'mrt', 'taxi', 'walk', 'hotel_move', 'travel'];
@@ -181,7 +181,7 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
     const isFiltered = filterTypes && !filterTypes.has(b.type);
     const editor = getBlockEditor(b.id);
     const isLocked = !!editor;
-    const classes = `bk ${cat.cls}${selectedId === b.id ? ' selected' : ''}${isFiltered ? ' filtered-out' : ''}`;
+    const classes = `bk ${cat?.cls || 'tv'}${selectedId === b.id ? ' selected' : ''}${isFiltered ? ' filtered-out' : ''}`;
 
     return (
       <div
@@ -309,7 +309,7 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
                     <div key={team} className="ln" onClick={e => handleLaneClick(e, `d${di}`, team)}>
                       <div className="ln-click-area" />
                       {blocks
-                        .filter(b => b.day === `d${di}` && b.team === team)
+                        .filter(b => b && b.day === `d${di}` && b.team === team && b.start && b.type)
                         .sort((a, b) => t2m(a.start) - t2m(b.start))
                         .map((b, idx) => renderBlock(b, idx))}
                     </div>

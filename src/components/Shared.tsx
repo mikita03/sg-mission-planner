@@ -38,7 +38,7 @@ export function BootScreen({ onDone }: { onDone: () => void }) {
       <div className="boot-content">
         <div className="boot-logo">SG MISSION 2026</div>
         <div>{lines.map((l, i) => (
-          <div key={i} className={`boot-line ${l.cls}`}>{l.t}</div>
+          <div key={i} className={`boot-line ${l?.cls || ''}`}>{l.t}</div>
         ))}</div>
         <div className="boot-bar">
           <div className="boot-bar-fill" style={{ width: `${progress}%` }} />

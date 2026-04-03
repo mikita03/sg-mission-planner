@@ -75,7 +75,7 @@ export function CovertExport({ blocks, onDone }: Props) {
 
         <div className="covert-terminal">
           {lines.map((l, i) => (
-            <div key={i} className={`covert-line ${l.cls}`}>{l.t}</div>
+            <div key={i} className={`covert-line ${l?.cls || ''}`}>{l.t}</div>
           ))}
           {!stamped && <span className="covert-cursor" />}
           <div className="covert-progress">

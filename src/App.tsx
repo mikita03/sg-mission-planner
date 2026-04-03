@@ -62,7 +62,7 @@ export default function App() {
 
   // Progress
   const confirmedVisits = useMemo(
-    () => blocks.filter(b => b.type === 'visit' && b.detail?.trim()).length,
+    () => blocks.filter(b => b && b.type === 'visit' && b.detail?.trim()).length,
     [blocks]
   );
   const progressPct = Math.min(100, Math.round((confirmedVisits / 12) * 100));
