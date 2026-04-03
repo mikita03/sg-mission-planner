@@ -28,7 +28,7 @@ export function BlockDrawer({ block, open, userName, onClose, onUpdate, onDelete
   const cat = getCat(block.type);
   const endTime = m2t(t2m(block.start) + block.dur);
   const isVisitType = block.type === 'visit' || block.type === 'reserve';
-  const comments = block.comments || [];
+  const comments = Array.isArray(block.comments) ? block.comments : [];
 
   function handleChange(field: keyof Block, value: unknown) {
     onUpdate(block!.id, { [field]: value });

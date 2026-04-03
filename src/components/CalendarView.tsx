@@ -218,7 +218,7 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
           </div>
         )}
         {!isLocked && b.detail && hpx > 40 && <div className="bk-detail">{b.detail}</div>}
-        {!isLocked && (b.comments?.length > 0) && hpx > 50 && (
+        {!isLocked && (Array.isArray(b.comments) && b.comments.length > 0) && hpx > 50 && (
           <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Share Tech Mono', marginTop: 1 }}>
             {b.comments.length} comment{b.comments.length > 1 ? 's' : ''}
           </div>

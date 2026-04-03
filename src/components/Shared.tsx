@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 
 /* ═══ Boot Screen ═══ */
 const BOOT_LINES = [
-  { t: '[SYS] INITIALIZING MISSION PLANNER v4.0...', c: 'sys' },
-  { t: '[NET] ESTABLISHING SECURE UPLINK...', c: 'sys' },
-  { t: '[DB ] LOADING SCHEDULE BLOCKS...................... OK', c: 'ok' },
-  { t: '[GPS] COORDINATES: 1.3521°N, 103.8198°E.......... OK', c: 'ok' },
-  { t: '[TZ ] TIMEZONE: UTC+8 (SGT)...................... OK', c: 'ok' },
-  { t: '[HUD] HEADS-UP DISPLAY ACTIVE..................... OK', c: 'ok' },
-  { t: '[FX ] PARTICLE SYSTEM + TRAIL ENGINE.............. OK', c: 'ok' },
-  { t: '[SYS] ALL SYSTEMS NOMINAL', c: 'ok' },
+  { t: '[SYS] INITIALIZING MISSION PLANNER v4.0...', cls: 'sys' },
+  { t: '[NET] ESTABLISHING SECURE UPLINK...', cls: 'sys' },
+  { t: '[DB ] LOADING SCHEDULE BLOCKS...................... OK', cls: 'ok' },
+  { t: '[GPS] COORDINATES: 1.3521°N, 103.8198°E.......... OK', cls: 'ok' },
+  { t: '[TZ ] TIMEZONE: UTC+8 (SGT)...................... OK', cls: 'ok' },
+  { t: '[HUD] HEADS-UP DISPLAY ACTIVE..................... OK', cls: 'ok' },
+  { t: '[FX ] PARTICLE SYSTEM + TRAIL ENGINE.............. OK', cls: 'ok' },
+  { t: '[SYS] ALL SYSTEMS NOMINAL', cls: 'ok' },
 ];
 
 export function BootScreen({ onDone }: { onDone: () => void }) {
@@ -38,7 +38,7 @@ export function BootScreen({ onDone }: { onDone: () => void }) {
       <div className="boot-content">
         <div className="boot-logo">SG MISSION 2026</div>
         <div>{lines.map((l, i) => (
-          <div key={i} className={`boot-line ${l.c}`}>{l.t}</div>
+          <div key={i} className={`boot-line ${l.cls}`}>{l.t}</div>
         ))}</div>
         <div className="boot-bar">
           <div className="boot-bar-fill" style={{ width: `${progress}%` }} />

@@ -4,18 +4,18 @@ import { exportBusinessPDF } from '../utils/pdf';
 import { triggerGlitch } from './Shared';
 
 const COVERT_LINES = [
-  { t: '> INITIATING COVERT EXTRACTION...', c: 'cmd', d: 300 },
-  { t: '[AUTH] BYPASSING CORPORATE FIREWALL......... ', c: 'info', d: 400 },
-  { t: '[AUTH] ACCESS GRANTED — CLEARANCE LEVEL: Ω', c: 'ok', d: 350 },
-  { t: '[SCAN] INTERCEPTING SCHEDULE DATA...', c: 'cmd', d: 300 },
-  { t: '[DATA] 4 DAYS / 2 TEAMS / {COUNT} BLOCKS CAPTURED', c: 'data', d: 350 },
-  { t: '[DATA] VISIT INTEL: {VISITS} TARGETS IDENTIFIED', c: 'data', d: 300 },
-  { t: '[COMP] COMPILING CLASSIFIED DOCUMENT...', c: 'cmd', d: 400 },
-  { t: '[ENC ] ENCODING: UTF-8 / FORMAT: PDF/A-1b', c: 'info', d: 250 },
-  { t: '[ENC ] APPLYING COVER: "出張工程表"', c: 'highlight', d: 350 },
-  { t: '[SEC ] WATERMARK: CONFIDENTIAL', c: 'data', d: 300 },
-  { t: '[OUT ] DOCUMENT READY — DEPLOYING TO LOCAL FS', c: 'ok', d: 400 },
-  { t: '> EXTRACTION COMPLETE. COVER YOUR TRACKS.', c: 'cmd', d: 500 },
+  { t: '> INITIATING COVERT EXTRACTION...', cls: 'cmd', d: 300 },
+  { t: '[AUTH] BYPASSING CORPORATE FIREWALL......... ', cls: 'info', d: 400 },
+  { t: '[AUTH] ACCESS GRANTED — CLEARANCE LEVEL: Ω', cls: 'ok', d: 350 },
+  { t: '[SCAN] INTERCEPTING SCHEDULE DATA...', cls: 'cmd', d: 300 },
+  { t: '[DATA] 4 DAYS / 2 TEAMS / {COUNT} BLOCKS CAPTURED', cls: 'data', d: 350 },
+  { t: '[DATA] VISIT INTEL: {VISITS} TARGETS IDENTIFIED', cls: 'data', d: 300 },
+  { t: '[COMP] COMPILING CLASSIFIED DOCUMENT...', cls: 'cmd', d: 400 },
+  { t: '[ENC ] ENCODING: UTF-8 / FORMAT: PDF/A-1b', cls: 'info', d: 250 },
+  { t: '[ENC ] APPLYING COVER: "出張工程表"', cls: 'highlight', d: 350 },
+  { t: '[SEC ] WATERMARK: CONFIDENTIAL', cls: 'data', d: 300 },
+  { t: '[OUT ] DOCUMENT READY — DEPLOYING TO LOCAL FS', cls: 'ok', d: 400 },
+  { t: '> EXTRACTION COMPLETE. COVER YOUR TRACKS.', cls: 'cmd', d: 500 },
 ];
 
 interface Props {
@@ -75,7 +75,7 @@ export function CovertExport({ blocks, onDone }: Props) {
 
         <div className="covert-terminal">
           {lines.map((l, i) => (
-            <div key={i} className={`covert-line ${l.c}`}>{l.t}</div>
+            <div key={i} className={`covert-line ${l.cls}`}>{l.t}</div>
           ))}
           {!stamped && <span className="covert-cursor" />}
           <div className="covert-progress">

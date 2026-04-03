@@ -52,7 +52,7 @@ function newBlock(p: Partial<Block>): Block {
     assignee: p.assignee || '',
     memo: p.memo || '',
     status: p.status || 'pending',
-    comments: p.comments || [],
+    comments: Array.isArray(p.comments) ? p.comments : [],
     editedBy: p.editedBy || '',
     editedAt: p.editedAt || 0,
   };
