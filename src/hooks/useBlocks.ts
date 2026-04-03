@@ -86,6 +86,11 @@ export function useBlocks(userName?: string) {
   const [mode, setMode] = useState<'firebase' | 'local'>('local');
   const skipNextSync = useRef(false);
 
+  // Normalize blocks from any source (ensures all fields exist)
+  function normalize(raw: Partial<Block>[]): Block[] {
+    return raw.map(b => newBlock(b));
+  }
+
   // ═══ Firebase mode ═══
   useEffect(() => {
     if (!isFirebaseConfigured || !db) {
@@ -95,7 +100,7 @@ export function useBlocks(userName?: string) {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setBlocks(parsed);
+            setBlocks(normalize(parsed));
             setLoaded(true);
             setMode('local');
             return;
@@ -106,7 +111,7 @@ export function useBlocks(userName?: string) {
         if (legacy) {
           const parsed = JSON.parse(legacy);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setBlocks(parsed);
+            setBlocks(normalize(parsed));
             setLoaded(true);
             setMode('local');
             return;
@@ -130,7 +135,7 @@ export function useBlocks(userName?: string) {
       }
       const data = snapshot.val();
       if (data) {
-        const arr = Object.values(data) as Block[];
+        const arr = normalize(Object.values(data) as Partial<Block>[]);
         setBlocks(arr);
       } else {
         // Empty DB: initialize with defaults
