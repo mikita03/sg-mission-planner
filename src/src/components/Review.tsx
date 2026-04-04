@@ -43,6 +43,12 @@ export function Review({ userName }: { userName?: string }) {
   const [activeTeamTab, setActiveTeamTab] = useState<'A' | 'B'>('A');
   const [inputs, setInputs] = useState<Record<string, string>>({});
 
+  // Timeout: if Firebase doesn't respond in 3s, show with defaults
+  useEffect(() => {
+    const t = setTimeout(() => setLoaded(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     if (isFirebaseConfigured && db) {
       const revRef = ref(db, 'review_v2');

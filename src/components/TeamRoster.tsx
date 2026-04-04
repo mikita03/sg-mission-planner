@@ -26,6 +26,11 @@ export function TeamRosterPanel({ visibleDays }: Props) {
   const [editInputs, setEditInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    const t = setTimeout(() => setLoaded(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
     if (isFirebaseConfigured && db) {
       const rRef = ref(db, 'roster');
       const unsub = onValue(rRef, (snap) => {
