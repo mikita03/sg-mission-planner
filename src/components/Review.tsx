@@ -38,16 +38,9 @@ function defaultReview(): ReviewData {
 
 export function Review({ userName }: { userName?: string }) {
   const [data, setData] = useState<ReviewData>(defaultReview());
-  const [loaded, setLoaded] = useState(false);
   const [expandedDay, setExpandedDay] = useState<string | null>('d0');
   const [activeTeamTab, setActiveTeamTab] = useState<'A' | 'B'>('A');
   const [inputs, setInputs] = useState<Record<string, string>>({});
-
-  // Timeout: if Firebase doesn't respond in 3s, show with defaults
-  useEffect(() => {
-    const t = setTimeout(() => setLoaded(true), 3000);
-    return () => clearTimeout(t);
-  }, []);
 
   useEffect(() => {
     if (isFirebaseConfigured && db) {
@@ -71,10 +64,9 @@ export function Review({ userName }: { userName?: string }) {
           setData(merged);
         } else {
           const d = defaultReview();
-          set(revRef, d);
+          try { set(revRef, d); } catch {}
           setData(d);
         }
-        setLoaded(true);
       });
       return () => unsub();
     } else {
@@ -82,7 +74,6 @@ export function Review({ userName }: { userName?: string }) {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) setData(JSON.parse(saved));
       } catch { /* */ }
-      setLoaded(true);
     }
   }, []);
 
@@ -116,8 +107,6 @@ export function Review({ userName }: { userName?: string }) {
     setInputs(prev => ({ ...prev, overall: '' }));
   }, [data, save, userName]);
 
-  if (!loaded) return null;
-
   const FIELDS: { key: keyof DayTeamReview; label: string; placeholder: string; icon: string }[] = [
     { key: 'outcomes', label: '成果・所感', placeholder: '訪問先での成果、得られた情報、印象など', icon: 'target' },
     { key: 'improvements', label: '改善点', placeholder: '次回への申し送り、改善すべきこと', icon: 'edit' },
@@ -128,7 +117,7 @@ export function Review({ userName }: { userName?: string }) {
   function countEntries(dayTeamKey: string): number {
     const dt = data.dayTeams[dayTeamKey];
     if (!dt) return 0;
-    return [dt.outcomes, dt.improvements, dt.sharing, dt.freeText].filter(a => a.length > 0).length;
+    return [dt.outcomes, dt.improvements, dt.sharing, dt.freeText].filter(a => Array.isArray(a) && a.length > 0).length;
   }
 
   function renderEntries(entries: ReviewEntry[]) {
@@ -218,7 +207,7 @@ export function Review({ userName }: { userName?: string }) {
                 {FIELDS.map(f => {
                   const dtKey = `${day.key}_${activeTeamTab}`;
                   const dt = data.dayTeams[dtKey] || emptyDayTeamReview();
-                  const entries = dt[f.key] || [];
+                  const entries = (Array.isArray(dt[f.key]) ? dt[f.key] : []) as ReviewEntry[];
                   const inputKey = `${dtKey}_${f.key}`;
 
                   return (
