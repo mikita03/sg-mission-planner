@@ -243,16 +243,6 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
         })}
       </div>
 
-      {/* View Toggle */}
-      <div className="view-toggle">
-        {[0, 1].map(v => (
-          <button key={v} className={currentView === v ? 'active' : ''} style={{ pointerEvents: 'none' }}>
-            {v === 0 ? '5/18 MON – 5/19 TUE' : '5/20 WED – 5/21 THU'}
-            <span className="phase">{v === 0 ? 'PHASE 1: VISITS' : 'PHASE 2: ATxSG'}</span>
-          </button>
-        ))}
-      </div>
-
       {/* Calendar */}
       <div className="cal-outer">
         <div className="cal-wrap" onMouseMove={e => {

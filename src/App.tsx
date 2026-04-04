@@ -13,6 +13,7 @@ import { VisitList } from './components/VisitList';
 import { Budget } from './components/Budget';
 import { Review } from './components/Review';
 import { CovertExport } from './components/CovertExport';
+import { TeamRosterPanel } from './components/TeamRoster';
 
 const MISSION_START = new Date('2026-05-18T00:00:00+08:00');
 
@@ -345,6 +346,9 @@ export default function App() {
                     </button>
                   ))}
                 </div>
+
+                {/* Team Roster */}
+                <TeamRosterPanel visibleDays={currentView === 0 ? [0, 1] : [2, 3]} />
 
                 <CalendarView
                   blocks={blocks}

@@ -3,50 +3,65 @@ import { ref, onValue, set } from 'firebase/database';
 import { db, isFirebaseConfigured } from '../firebase';
 import { DAYS, ic } from '../constants/categories';
 
-interface DayReview {
-  outcomes: string;    // 訪問の成果・所感
-  improvements: string; // 改善点・次回への申し送り
-  sharing: string;     // チームへの共有事項
-  freeText: string;    // 自由記述
+interface ReviewEntry {
+  text: string;
+  author: string;
+  timestamp: number;
+}
+
+interface DayTeamReview {
+  outcomes: ReviewEntry[];
+  improvements: ReviewEntry[];
+  sharing: ReviewEntry[];
+  freeText: ReviewEntry[];
 }
 
 interface ReviewData {
-  days: Record<string, DayReview>;
-  overall: string;
+  dayTeams: Record<string, DayTeamReview>;  // key: "d0_A", "d0_B" etc.
+  overall: ReviewEntry[];
 }
 
-const STORAGE_KEY = 'sg_mission_review';
+const STORAGE_KEY = 'sg_mission_review_v2';
 
-function emptyDayReview(): DayReview {
-  return { outcomes: '', improvements: '', sharing: '', freeText: '' };
+function emptyDayTeamReview(): DayTeamReview {
+  return { outcomes: [], improvements: [], sharing: [], freeText: [] };
 }
 
 function defaultReview(): ReviewData {
-  const days: Record<string, DayReview> = {};
-  DAYS.forEach(d => { days[d.key] = emptyDayReview(); });
-  return { days, overall: '' };
+  const dayTeams: Record<string, DayTeamReview> = {};
+  DAYS.forEach(d => {
+    dayTeams[`${d.key}_A`] = emptyDayTeamReview();
+    dayTeams[`${d.key}_B`] = emptyDayTeamReview();
+  });
+  return { dayTeams, overall: [] };
 }
 
 export function Review({ userName }: { userName?: string }) {
   const [data, setData] = useState<ReviewData>(defaultReview());
   const [loaded, setLoaded] = useState(false);
   const [expandedDay, setExpandedDay] = useState<string | null>('d0');
+  const [activeTeamTab, setActiveTeamTab] = useState<'A' | 'B'>('A');
+  const [inputs, setInputs] = useState<Record<string, string>>({});
 
-  // Load
   useEffect(() => {
     if (isFirebaseConfigured && db) {
-      const revRef = ref(db, 'review');
+      const revRef = ref(db, 'review_v2');
       const unsub = onValue(revRef, (snap) => {
         const val = snap.val();
-        if (val && val.days) {
-          // Merge with defaults to ensure all keys exist
+        if (val && val.dayTeams) {
           const merged = defaultReview();
-          Object.keys(val.days || {}).forEach(k => {
-            if (merged.days[k]) {
-              merged.days[k] = { ...merged.days[k], ...val.days[k] };
+          Object.keys(val.dayTeams || {}).forEach(k => {
+            if (merged.dayTeams[k]) {
+              const src = val.dayTeams[k];
+              merged.dayTeams[k] = {
+                outcomes: Array.isArray(src.outcomes) ? src.outcomes : [],
+                improvements: Array.isArray(src.improvements) ? src.improvements : [],
+                sharing: Array.isArray(src.sharing) ? src.sharing : [],
+                freeText: Array.isArray(src.freeText) ? src.freeText : [],
+              };
             }
           });
-          merged.overall = val.overall || '';
+          merged.overall = Array.isArray(val.overall) ? val.overall : [];
           setData(merged);
         } else {
           const d = defaultReview();
@@ -59,188 +74,213 @@ export function Review({ userName }: { userName?: string }) {
     } else {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const merged = defaultReview();
-          Object.keys(parsed.days || {}).forEach(k => {
-            if (merged.days[k]) merged.days[k] = { ...merged.days[k], ...parsed.days[k] };
-          });
-          merged.overall = parsed.overall || '';
-          setData(merged);
-        }
-      } catch { /* ignore */ }
+        if (saved) setData(JSON.parse(saved));
+      } catch { /* */ }
       setLoaded(true);
     }
   }, []);
 
-  // Save
   const save = useCallback((newData: ReviewData) => {
     setData(newData);
     if (isFirebaseConfigured && db) {
-      set(ref(db, 'review'), newData);
+      set(ref(db, 'review_v2'), newData);
     } else {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newData)); } catch { /* */ }
     }
   }, []);
 
-  const updateDayField = useCallback((dayKey: string, field: keyof DayReview, value: string) => {
-    const newData = {
+  const addEntry = useCallback((dayTeamKey: string, field: keyof DayTeamReview, text: string) => {
+    if (!text.trim()) return;
+    const entry: ReviewEntry = { text: text.trim(), author: userName || 'Anonymous', timestamp: Date.now() };
+    const dt = data.dayTeams[dayTeamKey] || emptyDayTeamReview();
+    save({
       ...data,
-      days: { ...data.days, [dayKey]: { ...data.days[dayKey], [field]: value } },
-    };
-    save(newData);
-  }, [data, save]);
+      dayTeams: {
+        ...data.dayTeams,
+        [dayTeamKey]: { ...dt, [field]: [...dt[field], entry] },
+      },
+    });
+    setInputs(prev => ({ ...prev, [`${dayTeamKey}_${field}`]: '' }));
+  }, [data, save, userName]);
 
-  const updateOverall = useCallback((value: string) => {
-    save({ ...data, overall: value });
-  }, [data, save]);
+  const addOverall = useCallback((text: string) => {
+    if (!text.trim()) return;
+    const entry: ReviewEntry = { text: text.trim(), author: userName || 'Anonymous', timestamp: Date.now() };
+    save({ ...data, overall: [...data.overall, entry] });
+    setInputs(prev => ({ ...prev, overall: '' }));
+  }, [data, save, userName]);
 
   if (!loaded) return null;
 
-  const FIELDS: { key: keyof DayReview; label: string; placeholder: string; icon: string }[] = [
-    { key: 'outcomes', label: 'OUTCOMES / 成果・所感', placeholder: '訪問先での成果、得られた情報、印象など', icon: 'target' },
-    { key: 'improvements', label: 'IMPROVEMENTS / 改善点', placeholder: '次回への申し送り、改善すべきこと', icon: 'edit' },
-    { key: 'sharing', label: 'TEAM SHARING / 共有事項', placeholder: 'チーム全体に共有すべきこと', icon: 'sync' },
-    { key: 'freeText', label: 'FREE NOTES / 自由記述', placeholder: 'その他メモ', icon: 'note' },
+  const FIELDS: { key: keyof DayTeamReview; label: string; placeholder: string; icon: string }[] = [
+    { key: 'outcomes', label: '成果・所感', placeholder: '訪問先での成果、得られた情報、印象など', icon: 'target' },
+    { key: 'improvements', label: '改善点', placeholder: '次回への申し送り、改善すべきこと', icon: 'edit' },
+    { key: 'sharing', label: 'チーム共有', placeholder: 'チーム全体に共有すべきこと', icon: 'sync' },
+    { key: 'freeText', label: '自由メモ', placeholder: 'その他メモ', icon: 'note' },
   ];
 
-  // Count non-empty fields per day
-  function dayProgress(dayKey: string): number {
-    const dr = data.days[dayKey];
-    if (!dr) return 0;
-    return [dr.outcomes, dr.improvements, dr.sharing, dr.freeText].filter(v => v.trim()).length;
+  function countEntries(dayTeamKey: string): number {
+    const dt = data.dayTeams[dayTeamKey];
+    if (!dt) return 0;
+    return [dt.outcomes, dt.improvements, dt.sharing, dt.freeText].filter(a => a.length > 0).length;
+  }
+
+  function renderEntries(entries: ReviewEntry[]) {
+    if (entries.length === 0) return null;
+    return (
+      <div style={{ marginBottom: 8 }}>
+        {entries.map((e, i) => (
+          <div key={i} className="comment-item" style={{ borderLeftColor: 'var(--neon-cyan)' }}>
+            <div className="comment-author">
+              <span>{e.author}</span>
+              <span className="comment-time">
+                {new Date(e.timestamp).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+            <div className="comment-text">{e.text}</div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   return (
     <div style={{ animation: 'fadeIn .4s ease' }}>
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 14, color: 'var(--neon-cyan)', letterSpacing: '.08em' }}>
+        <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 15, color: 'var(--neon-cyan)', letterSpacing: '.08em' }}>
           MISSION REVIEW
         </div>
-        <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 11, color: 'var(--text3)' }}>
-          {userName && `Editing as ${userName}`}
-        </div>
+        {userName && (
+          <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 11, color: 'var(--text3)' }}>
+            Posting as {userName}
+          </div>
+        )}
       </div>
 
       {/* Day Sections */}
       {DAYS.map(day => {
         const isExpanded = expandedDay === day.key;
-        const prog = dayProgress(day.key);
-        const dr = data.days[day.key] || emptyDayReview();
+        const progA = countEntries(`${day.key}_A`);
+        const progB = countEntries(`${day.key}_B`);
 
         return (
           <div key={day.key} style={{
             background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
-            marginBottom: 8, overflow: 'hidden', transition: 'all .3s',
+            marginBottom: 8, overflow: 'hidden',
           }}>
-            {/* Day Header (clickable) */}
-            <div
-              onClick={() => setExpandedDay(isExpanded ? null : day.key)}
-              className="review-day-header"
+            {/* Day Header */}
+            <div className="review-day-header" onClick={() => setExpandedDay(isExpanded ? null : day.key)}
               style={{
-                padding: '12px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', transition: 'background .15s',
+                padding: '12px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 background: isExpanded ? 'linear-gradient(135deg, #00e5ff08, #3d8bfd08)' : 'transparent',
-              }}
-            >
+              }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{
-                  fontFamily: 'Orbitron, monospace', fontSize: 12, fontWeight: 600,
+                  fontFamily: 'Orbitron, monospace', fontSize: 13, fontWeight: 600,
                   color: isExpanded ? 'var(--neon-cyan)' : 'var(--text2)', letterSpacing: '.08em',
-                  transition: 'color .2s',
-                }}>
-                  {day.label}
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--text3)' }}>{day.desc}</span>
+                }}>{day.label}</span>
+                <span style={{ fontSize: 12, color: 'var(--text3)' }}>{day.desc}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{
-                  fontFamily: 'Share Tech Mono', fontSize: 10,
-                  color: prog === 4 ? 'var(--neon-emerald)' : prog > 0 ? 'var(--neon-amber)' : 'var(--text3)',
-                }}>
-                  {prog}/4 FIELDS
-                </span>
-                {/* Mini energy bar */}
-                <div style={{ width: 40, height: 3, background: 'var(--bg3)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div className={prog > 0 ? 'energy-bar' : ''} style={{
-                    width: `${prog / 4 * 100}%`, height: '100%', borderRadius: 3, transition: 'width .4s',
-                    background: prog === 4 ? 'var(--neon-emerald)' : 'var(--neon-amber)',
-                  }} />
-                </div>
-                <span style={{
-                  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: 'transform .2s', display: 'inline-flex', color: 'var(--text3)',
-                }}>
-                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: progA > 0 ? 'var(--neon-emerald)' : 'var(--text3)' }}>A:{progA}/4</span>
+                <span style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: progB > 0 ? 'var(--neon-emerald)' : 'var(--text3)' }}>B:{progB}/4</span>
+                <span style={{ transform: isExpanded ? 'rotate(180deg)' : '', transition: 'transform .2s', display: 'inline-flex', color: 'var(--text3)' }}>
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
                 </span>
               </div>
             </div>
 
-            {/* Day Content (collapsible) */}
+            {/* Expanded Content */}
             {isExpanded && (
               <div style={{ padding: '0 16px 16px', animation: 'fadeIn .3s ease' }}>
-                {/* Decompress flash line */}
-                <div className="decompress-line" key={day.key + '-flash'} />
-                {FIELDS.map(f => (
-                  <div key={f.key} style={{ marginBottom: 12 }}>
-                    <label style={{
-                      display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4,
-                      fontFamily: 'Share Tech Mono, monospace', fontSize: 10, color: 'var(--text3)',
-                      textTransform: 'uppercase', letterSpacing: '.08em',
-                    }}>
-                      <span className="ic ic-sm" dangerouslySetInnerHTML={{ __html: ic(f.icon) }} />
-                      {f.label}
-                    </label>
-                    <textarea
-                      value={dr[f.key]}
-                      onChange={e => updateDayField(day.key, f.key, e.target.value)}
-                      placeholder={f.placeholder}
-                      rows={3}
-                      style={{
-                        width: '100%', padding: '8px 10px', background: 'var(--bg)', border: '1px solid var(--border2)',
-                        borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'Rajdhani, sans-serif',
-                        fontSize: 13, resize: 'vertical', minHeight: 50, transition: 'border-color .2s',
-                      }}
-                      onFocus={e => (e.target.style.borderColor = 'var(--neon-cyan)')}
-                      onBlur={e => (e.target.style.borderColor = 'var(--border2)')}
-                    />
-                  </div>
-                ))}
+                <div className="decompress-line" />
+
+                {/* Team A/B Toggle */}
+                <div style={{ display: 'flex', marginBottom: 12, border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', width: 'fit-content' }}>
+                  {(['A', 'B'] as const).map(t => (
+                    <button key={t} onClick={() => setActiveTeamTab(t)} style={{
+                      padding: '6px 20px', border: 'none', cursor: 'pointer',
+                      fontFamily: 'Rajdhani, sans-serif', fontSize: 13, fontWeight: 600, letterSpacing: '.06em',
+                      background: activeTeamTab === t ? 'linear-gradient(135deg, #00e5ff15, #3d8bfd15)' : 'var(--bg2)',
+                      color: activeTeamTab === t ? 'var(--neon-cyan)' : 'var(--text3)',
+                      borderRight: t === 'A' ? '1px solid var(--border)' : 'none',
+                    }}>TEAM {t}</button>
+                  ))}
+                </div>
+
+                {/* Fields */}
+                {FIELDS.map(f => {
+                  const dtKey = `${day.key}_${activeTeamTab}`;
+                  const dt = data.dayTeams[dtKey] || emptyDayTeamReview();
+                  const entries = dt[f.key] || [];
+                  const inputKey = `${dtKey}_${f.key}`;
+
+                  return (
+                    <div key={f.key} style={{ marginBottom: 14 }}>
+                      <label style={{
+                        display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6,
+                        fontFamily: 'Share Tech Mono, monospace', fontSize: 11, color: 'var(--text3)',
+                        textTransform: 'uppercase', letterSpacing: '.08em',
+                      }}>
+                        <span className="ic ic-sm" dangerouslySetInnerHTML={{ __html: ic(f.icon) }} />
+                        {f.label}
+                        {entries.length > 0 && <span style={{ color: 'var(--neon-emerald)' }}>({entries.length})</span>}
+                      </label>
+
+                      {renderEntries(entries)}
+
+                      <div className="comment-input-wrap">
+                        <input
+                          className="comment-input"
+                          type="text"
+                          value={inputs[inputKey] || ''}
+                          placeholder={f.placeholder}
+                          onChange={e => setInputs(prev => ({ ...prev, [inputKey]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') addEntry(dtKey, f.key, inputs[inputKey] || ''); }}
+                        />
+                        <button className="comment-send" onClick={() => addEntry(dtKey, f.key, inputs[inputKey] || '')}
+                          disabled={!(inputs[inputKey] || '').trim()}>POST</button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
         );
       })}
 
-      {/* Overall Review */}
-      <div style={{
-        background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
-        padding: 16, marginTop: 4,
-      }}>
+      {/* Overall */}
+      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16, marginTop: 4 }}>
         <label style={{
           display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
-          fontFamily: 'Orbitron, monospace', fontSize: 11, color: 'var(--neon-purple)',
-          letterSpacing: '.08em',
+          fontFamily: 'Orbitron, monospace', fontSize: 12, color: 'var(--neon-purple)', letterSpacing: '.08em',
         }}>
           <span className="ic" dangerouslySetInnerHTML={{ __html: ic('clipboard') }} />
           OVERALL MISSION REVIEW
         </label>
-        <textarea
-          value={data.overall}
-          onChange={e => updateOverall(e.target.value)}
-          placeholder="出張全体の振り返り、次のアクション、全体所感など"
-          rows={5}
-          style={{
-            width: '100%', padding: '10px 12px', background: 'var(--bg)', border: '1px solid var(--border2)',
-            borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'Rajdhani, sans-serif',
-            fontSize: 13, resize: 'vertical', minHeight: 80, transition: 'border-color .2s',
-          }}
-          onFocus={e => (e.target.style.borderColor = 'var(--neon-purple)')}
-          onBlur={e => (e.target.style.borderColor = 'var(--border2)')}
-        />
+
+        {data.overall.length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            {data.overall.map((e, i) => (
+              <div key={i} className="comment-item" style={{ borderLeftColor: 'var(--neon-purple)' }}>
+                <div className="comment-author"><span>{e.author}</span>
+                  <span className="comment-time">{new Date(e.timestamp).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <div className="comment-text">{e.text}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="comment-input-wrap">
+          <input className="comment-input" type="text" value={inputs['overall'] || ''}
+            placeholder="出張全体の振り返り、次のアクション"
+            onChange={e => setInputs(prev => ({ ...prev, overall: e.target.value }))}
+            onKeyDown={e => { if (e.key === 'Enter') addOverall(inputs['overall'] || ''); }} />
+          <button className="comment-send" onClick={() => addOverall(inputs['overall'] || '')}
+            disabled={!(inputs['overall'] || '').trim()}>POST</button>
+        </div>
       </div>
     </div>
   );
