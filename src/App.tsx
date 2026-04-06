@@ -88,8 +88,22 @@ export default function App() {
 
   const handleResetFilter = useCallback(() => setFilterTypes(null), []);
 
+  // Clean up any current draft block
+  const cleanupDraft = useCallback(() => {
+    if (selectedBlockId && wizardMode) {
+      const block = blocks.find(b => b.id === selectedBlockId);
+      if (block && block.draft) {
+        deleteBlock(selectedBlockId);
+      }
+    }
+  }, [selectedBlockId, wizardMode, blocks, deleteBlock]);
+
   // Block actions
   const handleSelectBlock = useCallback((id: string) => {
+    // Clean up existing draft if switching to another block
+    if (selectedBlockId && selectedBlockId !== id && wizardMode) {
+      cleanupDraft();
+    }
     const editor = getBlockEditor(id);
     if (editor) { showToast(`${editor} が編集中です`); return; }
     setSelectedBlockId(id);
@@ -103,26 +117,22 @@ export default function App() {
         setActiveTab('schedule');
       }
     }
-  }, [activeTab, blocks, getBlockEditor, setActiveBlock]);
+  }, [activeTab, blocks, getBlockEditor, setActiveBlock, selectedBlockId, wizardMode, cleanupDraft]);
 
   const handleCloseDrawer = useCallback((confirmed?: boolean) => {
-    // If closing wizard on a draft block WITHOUT confirming, delete it
-    if (selectedBlockId && wizardMode && !confirmed) {
-      const block = blocks.find(b => b.id === selectedBlockId);
-      if (block && block.draft) {
-        deleteBlock(selectedBlockId);
-      }
-    }
+    if (!confirmed) cleanupDraft();
     setSelectedBlockId(null);
     setWizardMode(false);
     setActiveBlock(null);
-  }, [setActiveBlock, selectedBlockId, wizardMode, blocks, deleteBlock]);
+  }, [setActiveBlock, cleanupDraft]);
 
   const handleStartCreate = useCallback((day: string, team: string, start: string, dur: number) => {
+    // Clean up existing draft before creating new one
+    cleanupDraft();
     const newBlock = addBlock({ day: day as Block['day'], team: team as Block['team'], start, dur, draft: true, category: 'reserve', label: '' });
     setSelectedBlockId(newBlock.id);
     setWizardMode(true);
-  }, [addBlock]);
+  }, [addBlock, cleanupDraft]);
 
   const handleAddBlock = useCallback((partial: Parameters<typeof addBlock>[0]) => {
     const newBlock = addBlock(partial);

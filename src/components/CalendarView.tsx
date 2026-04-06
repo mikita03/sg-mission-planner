@@ -121,6 +121,44 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
     document.addEventListener('mouseup', onUp);
   }
 
+  // ═══ Top Resize (change start time + duration) ═══
+  function onTopResizeMouseDown(e: React.MouseEvent, blockId: string) {
+    e.preventDefault(); e.stopPropagation();
+    const el = document.querySelector(`[data-block-id="${blockId}"]`) as HTMLElement;
+    if (!el) return;
+    const bl = blocks.find(b => b.id === blockId);
+    if (!bl) return;
+    const origStartMin = t2m(bl.start);
+    const origEndMin = origStartMin + bl.dur;
+    const startY = e.clientY;
+    const startTop = parseFloat(el.style.top);
+    let lastMouse = { x: 0, y: 0 };
+
+    function onMove(ev: MouseEvent) {
+      const deltaY = ev.clientY - startY;
+      let newStartMin = snap(startTop / PPM + deltaY / PPM);
+      newStartMin = Math.max(0, Math.min(origEndMin - SNAP, newStartMin));
+      const newDur = origEndMin - newStartMin;
+      el.style.top = m2px(newStartMin) + 'px';
+      el.style.height = (newDur * PPM) + 'px';
+      const timeEl = el.querySelector('.bk-time');
+      if (timeEl) timeEl.textContent = `${m2t(newStartMin)} – ${m2t(origEndMin)} (${newDur}m)`;
+      addTrail(ev.clientX, ev.clientY, '0,229,255');
+      lastMouse = { x: ev.clientX, y: ev.clientY };
+    }
+
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      const newStartMin = snap(parseFloat(el.style.top) / PPM);
+      const newDur = origEndMin - newStartMin;
+      onUpdateBlock(blockId, { start: m2t(newStartMin), dur: Math.max(SNAP, newDur) });
+      addRipple(lastMouse.x, lastMouse.y, '0,229,255');
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
   // ═══ Drag-to-Create on empty space ═══
   function onLaneMouseDown(e: React.MouseEvent, dayKey: string, team: string) {
     if (e.button !== 0 || (e.target as HTMLElement).closest('.bk')) return;
@@ -212,7 +250,7 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
           ...(isLocked ? { outline: '1px dashed var(--neon-amber)', opacity: 0.7 } : {}),
         }}
         onClick={(e) => { e.stopPropagation(); onSelectBlock(b.id); }}
-        onMouseDown={(e) => { if (isLocked) return; if (!(e.target as HTMLElement).closest('.rh')) onBlockMouseDown(e, b.id); }}
+        onMouseDown={(e) => { if (isLocked) return; const t = (e.target as HTMLElement); if (!t.closest('.rh') && !t.closest('.rh-top')) onBlockMouseDown(e, b.id); }}
         onMouseEnter={(e) => onBlockMouseEnter(e, b)}
         onMouseLeave={onBlockMouseLeave}
       >
@@ -238,6 +276,7 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
             {b.comments.length} comment{b.comments.length > 1 ? 's' : ''}
           </div>
         )}
+        {!isLocked && <div className="rh-top" onMouseDown={(e) => onTopResizeMouseDown(e, b.id)} />}
         {!isLocked && <div className="rh" onMouseDown={(e) => onResizeMouseDown(e, b.id)} />}
       </div>
     );
