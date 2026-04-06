@@ -88,22 +88,28 @@ export default function App() {
 
   const handleResetFilter = useCallback(() => setFilterTypes(null), []);
 
-  // Clean up any current draft block
+  // Clean up any current draft block (based on block.draft, NOT wizardMode)
   const cleanupDraft = useCallback(() => {
-    if (selectedBlockId && wizardMode) {
+    if (selectedBlockId) {
       const block = blocks.find(b => b.id === selectedBlockId);
       if (block && block.draft) {
         deleteBlock(selectedBlockId);
+        return true; // was cleaned
       }
     }
-  }, [selectedBlockId, wizardMode, blocks, deleteBlock]);
+    return false;
+  }, [selectedBlockId, blocks, deleteBlock]);
 
   // Block actions
   const handleSelectBlock = useCallback((id: string) => {
+    // If clicking the SAME draft block, keep wizard open - do nothing
+    if (selectedBlockId === id && wizardMode) return;
+
     // Clean up existing draft if switching to another block
-    if (selectedBlockId && selectedBlockId !== id && wizardMode) {
+    if (selectedBlockId && selectedBlockId !== id) {
       cleanupDraft();
     }
+
     const editor = getBlockEditor(id);
     if (editor) { showToast(`${editor} が編集中です`); return; }
     setSelectedBlockId(id);
@@ -120,6 +126,7 @@ export default function App() {
   }, [activeTab, blocks, getBlockEditor, setActiveBlock, selectedBlockId, wizardMode, cleanupDraft]);
 
   const handleCloseDrawer = useCallback((confirmed?: boolean) => {
+    // Always delete draft blocks unless confirmed
     if (!confirmed) cleanupDraft();
     setSelectedBlockId(null);
     setWizardMode(false);
@@ -127,12 +134,32 @@ export default function App() {
   }, [setActiveBlock, cleanupDraft]);
 
   const handleStartCreate = useCallback((day: string, team: string, start: string, dur: number) => {
-    // Clean up existing draft before creating new one
     cleanupDraft();
     const newBlock = addBlock({ day: day as Block['day'], team: team as Block['team'], start, dur, draft: true, category: 'reserve', label: '' });
     setSelectedBlockId(newBlock.id);
     setWizardMode(true);
   }, [addBlock, cleanupDraft]);
+
+  // Tab switch - clean up draft
+  const handleTabSwitch = useCallback((tab: Tab) => {
+    if (activeTab !== tab) {
+      cleanupDraft();
+      setSelectedBlockId(null);
+      setWizardMode(false);
+      setActiveBlock(null);
+      triggerGlitch();
+    }
+    setActiveTab(tab);
+  }, [activeTab, cleanupDraft, setActiveBlock]);
+
+  // View toggle - clean up draft
+  const handleViewToggle = useCallback((v: number) => {
+    cleanupDraft();
+    setSelectedBlockId(null);
+    setWizardMode(false);
+    setActiveBlock(null);
+    setCurrentView(v);
+  }, [cleanupDraft, setActiveBlock]);
 
   const handleAddBlock = useCallback((partial: Parameters<typeof addBlock>[0]) => {
     const newBlock = addBlock(partial);
@@ -158,12 +185,6 @@ export default function App() {
       showToast('DUPLICATED');
     }
   }, [duplicateBlock]);
-
-  // View toggle
-  const handleViewToggle = useCallback((v: number) => {
-    setCurrentView(v);
-    setSelectedBlockId(null);
-  }, []);
 
   if (!loaded) return null;
 
@@ -325,7 +346,7 @@ export default function App() {
         {/* ═══ Tab Bar ═══ */}
         <div className="tab-bar">
           {TABS.map(tab => (
-            <button key={tab.key} className={activeTab === tab.key ? 'active' : ''} onClick={() => { if (activeTab !== tab.key) { triggerGlitch(); } setActiveTab(tab.key); }}>
+            <button key={tab.key} className={activeTab === tab.key ? 'active' : ''} onClick={() => handleTabSwitch(tab.key as Tab)}>
               <span className="ic" dangerouslySetInnerHTML={{ __html: ic(tab.ico) }} />
               {tab.label}
             </button>
