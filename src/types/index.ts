@@ -7,23 +7,35 @@ export interface Comment {
   timestamp: number;
 }
 
+// Parent categories
+export type ParentCategory = 'visit' | 'atxsg' | 'move' | 'food' | 'sync' | 'review' | 'reserve';
+
+// Sub-types for move and food
+export type MoveSubType = 'taxi' | 'mrt' | 'flight' | 'walk';
+export type FoodSubType = 'lunch' | 'dinner';
+
 export interface Block {
   id: string;
   day: 'd0' | 'd1' | 'd2' | 'd3';
   team: 'A' | 'B';
   start: string;
   dur: number;
-  type: string;
+  category: ParentCategory;
+  subType: string;        // e.g. 'taxi', 'lunch', '' for no sub-type
   label: string;
-  detail: string;
+  detail: string;         // company name for visit, session for atxsg, etc.
   location: string;
+  fromLocation: string;   // for move blocks
   contact: string;
   assignee: string;
   memo: string;
+  draft: boolean;         // true = not yet confirmed
   status: BlockStatus;
   comments: Comment[];
   editedBy: string;
   editedAt: number;
+  // Legacy compat
+  type?: string;
 }
 
 export interface Category {
@@ -41,8 +53,6 @@ export interface DayInfo {
 
 export type Tab = 'schedule' | 'visits' | 'budget' | 'review';
 
-// Team roster - who is on which team each day
 export interface TeamRoster {
-  // key: "d0_A", "d0_B", "d1_A", etc.
-  [dayTeam: string]: string[]; // array of member names
+  [dayTeam: string]: string[];
 }

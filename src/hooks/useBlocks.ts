@@ -1,61 +1,82 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Block } from '../types';
+import type { Block, ParentCategory } from '../types';
 import { genId } from '../utils/time';
+import { legacyToCategory } from '../constants/categories';
 import { ref, onValue, set, update, remove } from 'firebase/database';
 import { db, isFirebaseConfigured } from '../firebase';
 
-/* ═══ Default Schedule Templates ═══ */
-function mkVisit(): Partial<Block>[] {
-  return [
-    { start:'9:15',dur:45,type:'hotel_move',label:'ホテル移動',detail:'ホテル→訪問先' },
-    { start:'10:00',dur:60,type:'visit',label:'訪問 1',detail:'' },
-    { start:'11:00',dur:15,type:'walk',label:'徒歩',detail:'→カフェ' },
-    { start:'11:15',dur:30,type:'review',label:'振り返り',detail:'' },
-    { start:'11:45',dur:75,type:'lunch',label:'ランチ+移動',detail:'' },
-    { start:'13:00',dur:30,type:'taxi',label:'タクシー',detail:'→訪問先' },
-    { start:'13:30',dur:60,type:'visit',label:'訪問 2',detail:'' },
-    { start:'14:30',dur:15,type:'walk',label:'徒歩',detail:'→カフェ' },
-    { start:'14:45',dur:30,type:'review',label:'振り返り',detail:'' },
-    { start:'15:15',dur:75,type:'reserve',label:'予備',detail:'訪問3 or バッファ' },
-    { start:'16:30',dur:30,type:'mrt',label:'MRT',detail:'→共有場所' },
-  ];
-}
-function mkEvent(): Partial<Block>[] {
-  return [
-    { start:'8:00',dur:60,type:'taxi',label:'タクシー',detail:'ホテル→EXPO' },
-    { start:'9:00',dur:180,type:'event',label:'ATxSG',detail:'午前セッション' },
-    { start:'12:00',dur:60,type:'lunch',label:'ランチ',detail:'会場内' },
-    { start:'13:00',dur:240,type:'event',label:'ATxSG',detail:'午後セッション' },
-  ];
-}
-function mkEvening(): Partial<Block>[] {
-  return [
-    { start:'17:00',dur:30,type:'mrt',label:'MRT',detail:'→共有場所' },
-    { start:'17:30',dur:90,type:'sync',label:'チーム間共有',detail:'' },
-    { start:'19:00',dur:30,type:'taxi',label:'タクシー',detail:'→レストラン' },
-    { start:'19:30',dur:90,type:'dinner',label:'ディナー',detail:'' },
-  ];
+/** Normalize any block data (handles legacy + missing fields) */
+function normalizeBlock(raw: any): Block {
+  if (!raw || typeof raw !== 'object') {
+    return createBlock({});
+  }
+  // Legacy migration: old 'type' field → new category/subType
+  let category = raw.category || '';
+  let subType = raw.subType || '';
+  if (!category && raw.type) {
+    const mapped = legacyToCategory(raw.type);
+    category = mapped.category;
+    subType = mapped.subType;
+  }
+  if (!category) category = 'reserve';
+
+  return {
+    id: raw.id || genId(),
+    day: raw.day || 'd0',
+    team: raw.team || 'A',
+    start: raw.start || '10:00',
+    dur: raw.dur || 60,
+    category: category as ParentCategory,
+    subType: subType || '',
+    label: raw.label || '',
+    detail: raw.detail || '',
+    location: raw.location || '',
+    fromLocation: raw.fromLocation || '',
+    contact: raw.contact || '',
+    assignee: raw.assignee || '',
+    memo: raw.memo || '',
+    draft: raw.draft ?? false,
+    status: raw.status || 'pending',
+    comments: Array.isArray(raw.comments) ? raw.comments : [],
+    editedBy: raw.editedBy || '',
+    editedAt: raw.editedAt || 0,
+  };
 }
 
-function newBlock(p: Partial<Block>): Block {
-  return {
-    id: p.id || genId(),
-    day: (p.day || 'd0') as Block['day'],
-    team: (p.team || 'A') as Block['team'],
-    start: p.start || '10:00',
-    dur: p.dur || 60,
-    type: p.type || 'visit',
-    label: p.label || '',
-    detail: p.detail || '',
-    location: p.location || '',
-    contact: p.contact || '',
-    assignee: p.assignee || '',
-    memo: p.memo || '',
-    status: p.status || 'pending',
-    comments: Array.isArray(p.comments) ? p.comments : [],
-    editedBy: p.editedBy || '',
-    editedAt: p.editedAt || 0,
-  };
+export function createBlock(p: Partial<Block>): Block {
+  return normalizeBlock({ id: genId(), ...p });
+}
+
+function mkVisit() {
+  return [
+    { start:'9:15',dur:45, category:'move' as const,subType:'taxi', label:'タクシー', fromLocation:'ホテル', location:'訪問先' },
+    { start:'10:00',dur:60, category:'visit' as const, label:'訪問 1' },
+    { start:'11:00',dur:15, category:'move' as const,subType:'walk', label:'徒歩', location:'カフェ' },
+    { start:'11:15',dur:30, category:'review' as const, label:'振り返り' },
+    { start:'11:45',dur:75, category:'food' as const,subType:'lunch', label:'ランチ' },
+    { start:'13:00',dur:30, category:'move' as const,subType:'taxi', label:'タクシー', location:'訪問先' },
+    { start:'13:30',dur:60, category:'visit' as const, label:'訪問 2' },
+    { start:'14:30',dur:15, category:'move' as const,subType:'walk', label:'徒歩', location:'カフェ' },
+    { start:'14:45',dur:30, category:'review' as const, label:'振り返り' },
+    { start:'15:15',dur:75, category:'reserve' as const, label:'予備', detail:'訪問3 or バッファ' },
+    { start:'16:30',dur:30, category:'move' as const,subType:'mrt', label:'MRT', location:'共有場所' },
+  ];
+}
+function mkEvent() {
+  return [
+    { start:'8:00',dur:60, category:'move' as const,subType:'taxi', label:'タクシー', fromLocation:'ホテル', location:'EXPO' },
+    { start:'9:00',dur:180, category:'atxsg' as const, label:'ATxSG', detail:'午前セッション' },
+    { start:'12:00',dur:60, category:'food' as const,subType:'lunch', label:'ランチ', detail:'会場内' },
+    { start:'13:00',dur:240, category:'atxsg' as const, label:'ATxSG', detail:'午後セッション' },
+  ];
+}
+function mkEvening() {
+  return [
+    { start:'17:00',dur:30, category:'move' as const,subType:'mrt', label:'MRT', location:'共有場所' },
+    { start:'17:30',dur:90, category:'sync' as const, label:'チーム間共有' },
+    { start:'19:00',dur:30, category:'move' as const,subType:'taxi', label:'タクシー', location:'レストラン' },
+    { start:'19:30',dur:90, category:'food' as const,subType:'dinner', label:'ディナー' },
+  ];
 }
 
 function generateDefault(): Block[] {
@@ -69,10 +90,10 @@ function generateDefault(): Block[] {
   configs.forEach((cfg, i) => {
     const day = `d${i}` as Block['day'];
     blocks.push(
-      ...cfg.a().map(p => newBlock({ ...p, day, team: 'A' })),
-      ...mkEvening().map(p => newBlock({ ...p, day, team: 'A' })),
-      ...cfg.b().map(p => newBlock({ ...p, day, team: 'B' })),
-      ...mkEvening().map(p => newBlock({ ...p, day, team: 'B' })),
+      ...cfg.a().map(p => createBlock({ ...p, day, team: 'A' })),
+      ...mkEvening().map(p => createBlock({ ...p, day, team: 'A' })),
+      ...cfg.b().map(p => createBlock({ ...p, day, team: 'B' })),
+      ...mkEvening().map(p => createBlock({ ...p, day, team: 'B' })),
     );
   });
   return blocks;
@@ -86,161 +107,107 @@ export function useBlocks(userName?: string) {
   const [mode, setMode] = useState<'firebase' | 'local'>('local');
   const skipNextSync = useRef(false);
 
-  // Normalize blocks from any source (ensures all fields exist)
-  function normalize(raw: Partial<Block>[]): Block[] {
-    return raw.map(b => newBlock(b));
-  }
-
-  // ═══ Firebase mode ═══
   useEffect(() => {
     if (!isFirebaseConfigured || !db) {
-      // Local-only fallback
       try {
-        const saved = localStorage.getItem(LOCAL_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setBlocks(normalize(parsed));
-            setLoaded(true);
-            setMode('local');
-            return;
+        for (const key of [LOCAL_KEY, 'sg8']) {
+          const saved = localStorage.getItem(key);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setBlocks(parsed.map(normalizeBlock));
+              setLoaded(true);
+              setMode('local');
+              return;
+            }
           }
         }
-        // Try legacy
-        const legacy = localStorage.getItem('sg8');
-        if (legacy) {
-          const parsed = JSON.parse(legacy);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setBlocks(normalize(parsed));
-            setLoaded(true);
-            setMode('local');
-            return;
-          }
-        }
-      } catch { /* ignore */ }
+      } catch { /* */ }
       setBlocks(generateDefault());
       setLoaded(true);
       setMode('local');
       return;
     }
 
-    // Firebase: listen for changes
     setMode('firebase');
-    const blocksRef = ref(db, 'blocks');
-
-    const unsub = onValue(blocksRef, (snapshot) => {
-      if (skipNextSync.current) {
-        skipNextSync.current = false;
-        return;
-      }
+    const timeout = setTimeout(() => { if (!loaded) setLoaded(true); }, 3000);
+    const unsub = onValue(ref(db!, 'blocks'), (snapshot) => {
+      clearTimeout(timeout);
+      if (skipNextSync.current) { skipNextSync.current = false; return; }
       const data = snapshot.val();
       if (data) {
-        const arr = normalize(Object.values(data) as Partial<Block>[]);
-        setBlocks(arr);
+        setBlocks(Object.values(data).map((b: any) => normalizeBlock(b)));
       } else {
-        // Empty DB: initialize with defaults
         const defaults = generateDefault();
         const obj: Record<string, Block> = {};
         defaults.forEach(b => { obj[b.id] = b; });
-        set(blocksRef, obj);
+        set(ref(db!, 'blocks'), obj);
         setBlocks(defaults);
       }
       setLoaded(true);
     });
-
-    return () => unsub();
+    return () => { unsub(); clearTimeout(timeout); };
   }, []);
 
-  // Local save (backup + offline)
   useEffect(() => {
     if (loaded && blocks.length > 0) {
-      try { localStorage.setItem(LOCAL_KEY, JSON.stringify(blocks)); } catch { /* ignore */ }
+      try { localStorage.setItem(LOCAL_KEY, JSON.stringify(blocks)); } catch { /* */ }
     }
   }, [blocks, loaded]);
 
-  // ═══ CRUD Operations ═══
-
   const addBlock = useCallback((partial: Partial<Block>) => {
-    const block = newBlock({
-      ...partial,
-      editedBy: userName || '',
-      editedAt: Date.now(),
-    });
-
-    if (mode === 'firebase' && db) {
-      set(ref(db, `blocks/${block.id}`), block);
-    } else {
-      setBlocks(prev => [...prev, block]);
-    }
+    const block = createBlock({ ...partial, editedBy: userName || '', editedAt: Date.now() });
+    if (mode === 'firebase' && db) set(ref(db, `blocks/${block.id}`), block);
+    else setBlocks(prev => [...prev, block]);
     return block;
   }, [mode, userName]);
 
   const updateBlock = useCallback((id: string, updates: Partial<Block>) => {
-    const patchedUpdates = {
-      ...updates,
-      editedBy: userName || updates.editedBy || '',
-      editedAt: Date.now(),
-    };
-
-    if (mode === 'firebase' && db) {
-      update(ref(db, `blocks/${id}`), patchedUpdates);
-    } else {
-      setBlocks(prev => prev.map(b =>
-        b.id === id ? { ...b, ...patchedUpdates } : b
-      ));
-    }
+    const patched = { ...updates, editedBy: userName || '', editedAt: Date.now() };
+    if (mode === 'firebase' && db) update(ref(db, `blocks/${id}`), patched);
+    else setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patched } : b));
   }, [mode, userName]);
 
   const deleteBlock = useCallback((id: string) => {
-    if (mode === 'firebase' && db) {
-      remove(ref(db, `blocks/${id}`));
-    } else {
-      setBlocks(prev => prev.filter(b => b.id !== id));
-    }
+    if (mode === 'firebase' && db) remove(ref(db, `blocks/${id}`));
+    else setBlocks(prev => prev.filter(b => b.id !== id));
   }, [mode]);
 
   const duplicateBlock = useCallback((id: string) => {
-    const original = blocks.find(b => b.id === id);
-    if (!original) return null;
-    const dup = newBlock({
-      ...original,
-      id: genId(),
-      start: (() => {
-        const [h, m] = original.start.split(':').map(Number);
-        const total = h * 60 + m + 15;
-        return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
-      })(),
-      detail: '',
-      editedBy: userName || '',
-      editedAt: Date.now(),
+    const orig = blocks.find(b => b.id === id);
+    if (!orig) return null;
+    const [h, m] = orig.start.split(':').map(Number);
+    const total = h * 60 + m + 15;
+    const dup = createBlock({
+      ...orig, id: genId(),
+      start: `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`,
+      detail: '', draft: true, editedBy: userName || '', editedAt: Date.now(),
     });
-
-    if (mode === 'firebase' && db) {
-      set(ref(db, `blocks/${dup.id}`), dup);
-    } else {
-      setBlocks(prev => [...prev, dup]);
-    }
+    if (mode === 'firebase' && db) set(ref(db, `blocks/${dup.id}`), dup);
+    else setBlocks(prev => [...prev, dup]);
     return dup;
   }, [blocks, mode, userName]);
 
   const addComment = useCallback((blockId: string, text: string) => {
     const block = blocks.find(b => b.id === blockId);
     if (!block) return;
-    const comment = {
-      id: genId(),
-      author: userName || 'Anonymous',
-      text,
-      timestamp: Date.now(),
-    };
+    const comment = { id: genId(), author: userName || 'Anonymous', text, timestamp: Date.now() };
     const updatedComments = [...(block.comments || []), comment];
-    if (mode === 'firebase' && db) {
-      update(ref(db, `blocks/${blockId}`), { comments: updatedComments });
-    } else {
-      setBlocks(prev => prev.map(b =>
-        b.id === blockId ? { ...b, comments: updatedComments } : b
-      ));
-    }
+    if (mode === 'firebase' && db) update(ref(db, `blocks/${blockId}`), { comments: updatedComments });
+    else setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, comments: updatedComments } : b));
   }, [blocks, mode, userName]);
 
-  return { blocks, loaded, mode, addBlock, updateBlock, deleteBlock, duplicateBlock, addComment };
+  /** Check if adjacent movement block exists */
+  const hasAdjacentMove = useCallback((day: string, team: string, startMin: number, direction: 'before' | 'after'): boolean => {
+    return blocks.some(b => {
+      if (b.day !== day || b.team !== team || b.category !== 'move') return false;
+      const [h, m] = b.start.split(':').map(Number);
+      const bStart = (h - 6) * 60 + m;
+      const bEnd = bStart + b.dur;
+      if (direction === 'before') return Math.abs(bEnd - startMin) <= 15;
+      return Math.abs(bStart - (startMin)) <= 15;
+    });
+  }, [blocks]);
+
+  return { blocks, loaded, mode, addBlock, updateBlock, deleteBlock, duplicateBlock, addComment, hasAdjacentMove };
 }

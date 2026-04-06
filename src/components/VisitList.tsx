@@ -9,7 +9,7 @@ interface Props {
 
 export function VisitList({ blocks, onSelectBlock }: Props) {
   const visits = blocks
-    .filter(b => b && (b.type === 'visit' || b.type === 'reserve'))
+    .filter(b => b && (b.category === 'visit' || b.category === 'reserve'))
     .sort((a, b) => {
       if (a.day !== b.day) return a.day < b.day ? -1 : 1;
       if (a.team !== b.team) return a.team < b.team ? -1 : 1;

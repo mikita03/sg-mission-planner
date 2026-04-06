@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { Tab } from './types';
+import type { Tab, Block } from './types';
 import { useBlocks } from './hooks/useBlocks';
 import { useUser } from './hooks/useUser';
 import { usePresence } from './hooks/usePresence';
-import { ic, DAYS, getCat } from './constants/categories';
+import { ic, DAYS, PARENT_CATEGORIES, PARENT_CATEGORY_KEYS } from './constants/categories';
 import { getSGT, formatSGTDate, formatSGTTime } from './utils/time';
 
 import { BootScreen, ParticleCanvas, FxCanvas, HudFrame, MouseGlow, Toast, showToast, triggerGlitch } from './components/Shared';
@@ -19,7 +19,7 @@ const MISSION_START = new Date('2026-05-18T00:00:00+08:00');
 
 export default function App() {
   const { user, needsNickname, setNickname } = useUser();
-  const { blocks, loaded, mode, addBlock, updateBlock, deleteBlock, duplicateBlock, addComment } = useBlocks(user?.name);
+  const { blocks, loaded, mode, addBlock, updateBlock, deleteBlock, duplicateBlock, addComment, hasAdjacentMove } = useBlocks(user?.name);
   const { otherOnlineUsers, setActiveBlock, getBlockEditor } = usePresence(user?.uid || null);
   const [nicknameInput, setNicknameInput] = useState('');
   const [booted, setBooted] = useState(false);
@@ -28,6 +28,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState(0);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [filterTypes, setFilterTypes] = useState<Set<string> | null>(null);
+  const [wizardMode, setWizardMode] = useState(false);
 
   // Clocks
   const [sgtTime, setSgtTime] = useState('--:--:--');
@@ -63,7 +64,7 @@ export default function App() {
 
   // Progress
   const confirmedVisits = useMemo(
-    () => blocks.filter(b => b && b.type === 'visit' && b.detail?.trim()).length,
+    () => blocks.filter(b => b && b.category === 'visit' && b.detail?.trim()).length,
     [blocks]
   );
   const progressPct = Math.min(100, Math.round((confirmedVisits / 12) * 100));
@@ -89,15 +90,11 @@ export default function App() {
 
   // Block actions
   const handleSelectBlock = useCallback((id: string) => {
-    // Check edit lock
     const editor = getBlockEditor(id);
-    if (editor) {
-      showToast(`${editor} が編集中です`);
-      return;
-    }
+    if (editor) { showToast(`${editor} が編集中です`); return; }
     setSelectedBlockId(id);
+    setWizardMode(false);
     setActiveBlock(id);
-    // If viewing visits tab, switch to schedule
     if (activeTab === 'visits') {
       const block = blocks.find(b => b.id === id);
       if (block) {
@@ -110,8 +107,15 @@ export default function App() {
 
   const handleCloseDrawer = useCallback(() => {
     setSelectedBlockId(null);
+    setWizardMode(false);
     setActiveBlock(null);
   }, [setActiveBlock]);
+
+  const handleStartCreate = useCallback((day: string, team: string, start: string, dur: number) => {
+    const newBlock = addBlock({ day: day as Block['day'], team: team as Block['team'], start, dur, draft: true, category: 'reserve', label: '' });
+    setSelectedBlockId(newBlock.id);
+    setWizardMode(true);
+  }, [addBlock]);
 
   const handleAddBlock = useCallback((partial: Parameters<typeof addBlock>[0]) => {
     const newBlock = addBlock(partial);
@@ -153,11 +157,12 @@ export default function App() {
     { key: 'review', label: 'Review', ico: 'edit' },
   ];
 
-  const LEGEND_ITEMS = [
-    ['visit', '訪問'], ['event', 'ATxSG'], ['review', '振返り'], ['reserve', '予備'],
-    ['sync', '共有'], ['dinner', '夕食'], ['lunch', '昼食'],
-    ['flight', '飛行機'], ['mrt', 'MRT'], ['taxi', 'TAXI'], ['walk', '徒歩'], ['hotel_move', 'HOTEL'],
-  ] as const;
+  const LEGEND_ITEMS = PARENT_CATEGORY_KEYS.map(key => ({
+    key,
+    label: PARENT_CATEGORIES[key].lbl,
+    ico: PARENT_CATEGORIES[key].ico,
+    cls: PARENT_CATEGORIES[key].cls,
+  }));
 
   return (
     <>
@@ -252,7 +257,7 @@ export default function App() {
             <button className="btn" onClick={() => {
               const csv = 'Day,Start,End,Duration,Team,Type,Label,Detail,Location,Contact,Assignee,Memo\n' +
                 blocks.sort((a, b) => a.day < b.day ? -1 : a.day > b.day ? 1 : 0)
-                  .map(b => `${DAYS[parseInt(b.day[1])].date},${b.start},${b.dur},Team${b.team},${b.type},"${b.label}","${b.detail}","${b.location}","${b.contact}","${b.assignee}","${b.memo}"`)
+                  .map(b => `${DAYS[parseInt(b.day[1])].date},${b.start},${b.dur},Team${b.team},${b.category}:${b.subType},"${b.label}","${b.detail}","${b.location}","${b.contact}","${b.assignee}","${b.memo}"`)
                   .join('\n');
               const a = document.createElement('a');
               a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv' }));
@@ -317,16 +322,16 @@ export default function App() {
               <>
                 {/* Legend (filterable) */}
                 <div className="lg">
-                  {LEGEND_ITEMS.map(([key, label]) => {
-                    const isActive = filterTypes ? filterTypes.has(key) : false;
-                    const isDimmed = filterTypes && !filterTypes.has(key);
+                  {LEGEND_ITEMS.map(item => {
+                    const isActive = filterTypes ? filterTypes.has(item.key) : false;
+                    const isDimmed = filterTypes && !filterTypes.has(item.key);
                     return (
-                      <span key={key}
-                        className={`lg-item ${isActive ? 'active' : ''} ${isDimmed ? 'dimmed' : ''}`}
-                        onClick={() => handleFilterToggle(key)}
+                      <span key={item.key}
+                        className={`lg-item bk-${item.cls} ${isActive ? 'active' : ''} ${isDimmed ? 'dimmed' : ''}`}
+                        onClick={() => handleFilterToggle(item.key)}
                       >
-                        <span className="ic ic-sm" dangerouslySetInnerHTML={{ __html: ic(getCat(key).ico) }} />
-                        {label}
+                        <span className="ic ic-sm" dangerouslySetInnerHTML={{ __html: ic(item.ico) }} />
+                        {item.label}
                       </span>
                     );
                   })}
@@ -358,11 +363,11 @@ export default function App() {
                   getBlockEditor={getBlockEditor}
                   onSelectBlock={handleSelectBlock}
                   onUpdateBlock={handleUpdateBlock}
-                  onAddBlock={handleAddBlock}
+                  onStartCreate={handleStartCreate}
                 />
 
-                <div className="foot" style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 10, color: 'var(--text3)', marginTop: 12 }}>
-                  CLICK BLOCK: OPEN DETAIL ｜ DRAG: RESCHEDULE ｜ EDGE-DRAG: RESIZE ｜ CLICK EMPTY: ADD BLOCK ｜ LEGEND: FILTER
+                <div className="foot" style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 11, color: 'var(--text3)', marginTop: 12 }}>
+                  DRAG EMPTY: CREATE BLOCK ｜ CLICK BLOCK: OPEN DETAIL ｜ DRAG BLOCK: RESCHEDULE ｜ EDGE-DRAG: RESIZE ｜ LEGEND: FILTER
                 </div>
               </>
             )}
@@ -384,12 +389,15 @@ export default function App() {
           <BlockDrawer
             block={selectedBlock}
             open={drawerOpen}
+            wizardMode={wizardMode}
             userName={user?.name}
+            hasAdjacentMove={hasAdjacentMove}
             onClose={handleCloseDrawer}
             onUpdate={handleUpdateBlock}
             onDelete={handleDeleteBlock}
             onDuplicate={handleDuplicateBlock}
             onAddComment={addComment}
+            onAddMovement={handleAddBlock}
           />
         </div>
       </div>

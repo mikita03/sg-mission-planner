@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import type { Block } from '../types';
-import { DAYS, getCat } from '../constants/categories';
+import { DAYS, getCatDisplay } from '../constants/categories';
 import { t2m, m2t } from './time';
 
 export function exportBusinessPDF(blocks: Block[]) {
@@ -60,7 +60,7 @@ export function exportBusinessPDF(blocks: Block[]) {
 
       teamBlocks.forEach((b, i) => {
         checkPage(7);
-        const cat = getCat(b.type);
+        const cat = getCatDisplay(b.category, b.subType);
         const endTime = m2t(t2m(b.start) + b.dur);
         if (i % 2 === 0) { doc.setFillColor(252, 252, 252); doc.rect(mg, y - 1, cw, 5.5, 'F'); }
         doc.setFontSize(7.5); doc.setTextColor(40, 40, 40);
@@ -83,7 +83,7 @@ export function exportBusinessPDF(blocks: Block[]) {
   doc.setFontSize(12); doc.setTextColor(20, 20, 20);
   doc.text('訪問先一覧', mg, y); y += 8;
 
-  const visits = blocks.filter(b => b.type === 'visit' || b.type === 'reserve')
+  const visits = blocks.filter(b => b.category === 'visit' || b.category === 'reserve')
     .sort((a, b) => a.day < b.day ? -1 : a.day > b.day ? 1 : t2m(a.start) - t2m(b.start));
 
   doc.setFillColor(240, 240, 240); doc.rect(mg, y, cw, 6, 'F');
