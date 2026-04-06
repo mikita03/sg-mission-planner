@@ -105,9 +105,9 @@ export default function App() {
     }
   }, [activeTab, blocks, getBlockEditor, setActiveBlock]);
 
-  const handleCloseDrawer = useCallback(() => {
-    // If closing wizard on a draft block, delete it
-    if (selectedBlockId && wizardMode) {
+  const handleCloseDrawer = useCallback((confirmed?: boolean) => {
+    // If closing wizard on a draft block WITHOUT confirming, delete it
+    if (selectedBlockId && wizardMode && !confirmed) {
       const block = blocks.find(b => b.id === selectedBlockId);
       if (block && block.draft) {
         deleteBlock(selectedBlockId);

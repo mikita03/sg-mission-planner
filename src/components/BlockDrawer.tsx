@@ -11,7 +11,7 @@ interface Props {
   wizardMode: boolean;           // true = new block creation wizard
   userName?: string;
   hasAdjacentMove: (day: string, team: string, startMin: number, dir: 'before' | 'after') => boolean;
-  onClose: () => void;
+  onClose: (confirmed?: boolean) => void;
   onUpdate: (id: string, updates: Partial<Block>) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -107,7 +107,7 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
         draft: false,
       });
     }
-    onClose();
+    onClose(true);  // confirmed=true prevents draft deletion
   }
 
   function mapsUrl(location: string) {
@@ -128,7 +128,7 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
 
   return (
     <>
-      <div className={`drawer-overlay ${open ? 'open' : ''}`} onClick={onClose} />
+      <div className={`drawer-overlay ${open ? 'open' : ''}`} onClick={() => onClose()} />
       <div className={`drawer ${open ? 'open' : ''}`}>
         {open && <div className="drawer-scan" key={block.id} />}
 
@@ -137,7 +137,7 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
             <span className="ic" dangerouslySetInnerHTML={{ __html: ic(cat.ico) }} />
             {wizardMode ? ' NEW BLOCK' : ' BLOCK DETAIL'}
           </h3>
-          <button className="drawer-close" onClick={onClose}>
+          <button className="drawer-close" onClick={() => onClose()}>
             <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
