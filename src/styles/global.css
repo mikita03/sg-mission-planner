@@ -503,3 +503,11 @@ body{
 .wizard-sub-btn-sm{padding:3px 10px;border-radius:12px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:11px;font-family:'Rajdhani',sans-serif;color:var(--text3);transition:all .15s}
 .wizard-sub-btn-sm:hover{border-color:var(--neon-cyan)}
 .wizard-sub-btn-sm.selected{border-color:var(--neon-cyan);color:var(--neon-cyan);background:#00e5ff08}
+
+/* ═══ New Calendar Grid Layout ═══ */
+.cal{display:grid;grid-template-columns:54px 1fr 1fr;width:100%}
+.dc{border-right:1px solid var(--border)}.dc:last-child{border-right:none}
+.tl-wrap{display:grid;grid-template-columns:1fr 1fr;position:relative}
+.tl{position:relative;border-right:1px solid var(--border12,rgba(255,255,255,.05))}.tl:last-child{border-right:none}
+.dt-row{display:grid;grid-template-columns:1fr 1fr;margin-top:5px;font-size:12px;color:var(--text2);font-weight:600;letter-spacing:.1em;text-align:center}
+.dt-a,.dt-b{padding:2px 0}

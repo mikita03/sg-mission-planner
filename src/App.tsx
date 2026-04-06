@@ -106,10 +106,17 @@ export default function App() {
   }, [activeTab, blocks, getBlockEditor, setActiveBlock]);
 
   const handleCloseDrawer = useCallback(() => {
+    // If closing wizard on a draft block, delete it
+    if (selectedBlockId && wizardMode) {
+      const block = blocks.find(b => b.id === selectedBlockId);
+      if (block && block.draft) {
+        deleteBlock(selectedBlockId);
+      }
+    }
     setSelectedBlockId(null);
     setWizardMode(false);
     setActiveBlock(null);
-  }, [setActiveBlock]);
+  }, [setActiveBlock, selectedBlockId, wizardMode, blocks, deleteBlock]);
 
   const handleStartCreate = useCallback((day: string, team: string, start: string, dur: number) => {
     const newBlock = addBlock({ day: day as Block['day'], team: team as Block['team'], start, dur, draft: true, category: 'reserve', label: '' });

@@ -264,36 +264,42 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
         e.currentTarget.style.setProperty('--mouse-x', ((e.clientX - rect.left) / rect.width * 100).toFixed(1) + '%');
         e.currentTarget.style.setProperty('--mouse-y', ((e.clientY - rect.top) / rect.height * 100).toFixed(1) + '%');
       }}>
-        <div className="cal">
-          {/* Time column */}
-          <div className="tc">
-            {Array.from({ length: EH - SH }, (_, i) => (
-              <div key={i} className="tm" style={{ top: m2px(i * 60) }}>{SH + i}:00</div>
-            ))}
-            {nowMin >= 0 && nowMin <= TMIN && (
-              <div className="now-line" style={{ top: m2px(nowMin) }}><span className="now-dot" /></div>
-            )}
-          </div>
+        {/* Header row */}
+        <div className="cal-header">
+          <div className="ch-corner" />
+          {days.map(di => (
+            <div key={di} className="ch-day">
+              <div className="dl">{DAYS[di].label}</div>
+              <div className="dn">{DAYS[di].desc}</div>
+              <div className="tr"><span>A</span><span>B</span></div>
+            </div>
+          ))}
+        </div>
 
-          {/* Day columns */}
-          {days.map(di => {
-            const dayKey = `d${di}` as Block['day'];
-            return (
-              <div key={di} className="dc">
-                <div className="ch-day">
-                  <div className="dl">{DAYS[di].label}</div>
-                  <div className="dn">{DAYS[di].desc}</div>
-                  <div className="dt-row"><span className="dt-a">A</span><span className="dt-b">B</span></div>
-                </div>
-                <div className="tl-wrap">
+        {/* Body */}
+        <div className="cal-body-wrap">
+          <div className="cal-body">
+            {/* Time column */}
+            <div className="tc" style={{ height: TPX }}>
+              {Array.from({ length: EH - SH }, (_, i) => (
+                <div key={i} className="tm" style={{ top: m2px(i * 60) }}>{SH + i}:00</div>
+              ))}
+              {nowMin >= 0 && nowMin <= TMIN && (
+                <div className="now-line" style={{ top: m2px(nowMin) }}><span className="now-dot" /></div>
+              )}
+            </div>
+
+            {/* Day columns with team lanes */}
+            {days.map(di => {
+              const dayKey = `d${di}` as Block['day'];
+              return (
+                <div key={di} className="dc" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
                   {(['A', 'B'] as const).map(team => (
-                    <div key={team} className="tl" style={{ height: TPX }}
+                    <div key={team} className="tl" style={{ height: TPX, position: 'relative', borderRight: team === 'A' ? '1px solid var(--border)' : 'none' }}
                       onMouseDown={e => onLaneMouseDown(e, dayKey, team)}>
-                      {/* Hour gridlines */}
                       {Array.from({ length: EH - SH }, (_, i) => (
                         <div key={i} className="gl" style={{ top: m2px(i * 60) }} />
                       ))}
-                      {/* Blocks */}
                       {blocks
                         .filter(b => b && b.day === dayKey && b.team === team && b.start && b.category)
                         .sort((a, b) => t2m(a.start) - t2m(b.start))
@@ -302,9 +308,9 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
                     </div>
                   ))}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
 

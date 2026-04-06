@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Block, ParentCategory } from '../types';
 import { genId } from '../utils/time';
 import { legacyToCategory } from '../constants/categories';
@@ -105,7 +105,6 @@ export function useBlocks(userName?: string) {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [mode, setMode] = useState<'firebase' | 'local'>('local');
-  const skipNextSync = useRef(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured || !db) {
@@ -133,7 +132,6 @@ export function useBlocks(userName?: string) {
     const timeout = setTimeout(() => { if (!loaded) setLoaded(true); }, 3000);
     const unsub = onValue(ref(db!, 'blocks'), (snapshot) => {
       clearTimeout(timeout);
-      if (skipNextSync.current) { skipNextSync.current = false; return; }
       const data = snapshot.val();
       if (data) {
         setBlocks(Object.values(data).map((b: any) => normalizeBlock(b)));
