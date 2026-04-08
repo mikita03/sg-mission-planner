@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-import { getAuth } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FB_API_KEY || '',
@@ -19,3 +19,4 @@ const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
 
 export const db = app ? getDatabase(app) : null;
 export const auth = app ? getAuth(app) : null;
+export const googleProvider = app ? new GoogleAuthProvider() : null;
