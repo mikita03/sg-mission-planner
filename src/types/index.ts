@@ -34,6 +34,7 @@ export interface Block {
   comments: Comment[];
   editedBy: string;
   editedAt: number;
+  mapUrl: string;          // Google Maps URL
   // Legacy compat
   type?: string;
 }

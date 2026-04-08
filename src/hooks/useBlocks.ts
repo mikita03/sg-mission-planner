@@ -35,6 +35,7 @@ function normalizeBlock(raw: any): Block {
     contact: raw.contact || '',
     assignee: raw.assignee || '',
     memo: raw.memo || '',
+    mapUrl: raw.mapUrl || '',
     draft: raw.draft ?? false,
     status: raw.status || 'pending',
     comments: Array.isArray(raw.comments) ? raw.comments : [],

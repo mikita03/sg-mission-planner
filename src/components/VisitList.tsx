@@ -4,6 +4,7 @@ import { db, isFirebaseConfigured } from '../firebase';
 import type { Block } from '../types';
 import { DAYS, ic } from '../constants/categories';
 import { t2m, m2t, genId } from '../utils/time';
+import { parseLocationInput, getMapsLink } from '../utils/maps';
 import { showToast } from './Shared';
 import { MarkdownField, MdText } from './MarkdownField';
 
@@ -12,6 +13,7 @@ export interface VisitCandidate {
   company: string;
   contact: string;
   location: string;
+  mapUrl: string;
   assignee: string;
   memo: string;
   status: 'candidate' | 'approaching' | 'confirmed' | 'cancelled';
@@ -109,7 +111,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
 
   const addCandidate = useCallback(() => {
     const nc: VisitCandidate = {
-      id: genId(), company: '', contact: '', location: '', assignee: '', memo: '',
+      id: genId(), company: '', contact: '', location: '', mapUrl: '', assignee: '', memo: '',
       status: 'candidate', priority: 'medium', tags: [],
       day: '', team: 'A', startTime: '', duration: 60, blockId: '',
       createdBy: userName || '', createdAt: Date.now(), sortOrder: Date.now(),
@@ -136,7 +138,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
       day: c.day as Block['day'], team: c.team as Block['team'],
       start: c.startTime, dur: c.duration || 60,
       category: 'visit', subType: '', label: c.company, detail: c.company,
-      location: c.location, contact: c.contact, assignee: c.assignee, memo: c.memo, draft: false,
+      location: c.location, contact: c.contact, assignee: c.assignee, memo: c.memo, mapUrl: c.mapUrl || '', draft: false,
     });
     updateCandidate(id, { blockId: block.id });
     showToast('SCHEDULED');
@@ -332,7 +334,9 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', fontFamily: 'Rajdhani', fontSize: 13, color: 'var(--text2)', lineHeight: 1.8 }}>
-                {selected.location && <div><span style={{ color: 'var(--text3)', marginRight: 6 }}>📍</span>{selected.location}</div>}
+                {selected.location && <div><span style={{ color: 'var(--text3)', marginRight: 6 }}>📍</span>{selected.location}
+                  {getMapsLink(selected.location, selected.mapUrl) && <a href={getMapsLink(selected.location, selected.mapUrl)} target="_blank" rel="noopener noreferrer" className="maps-link" style={{ marginLeft: 6 }}><svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="currentColor"/><circle cx="12" cy="9" r="2.5" fill="var(--bg)"/></svg>MAP</a>}
+                </div>}
                 {selected.assignee && <div><span style={{ color: 'var(--text3)', marginRight: 6 }}>👤</span>{selected.assignee}</div>}
                 {selected.contact && <div><span style={{ color: 'var(--text3)', marginRight: 6 }}>☎</span>{selected.contact}</div>}
                 <div><span style={{ color: 'var(--text3)', marginRight: 6 }}>🏷</span>優先度: {pri?.label || '中'}</div>
@@ -413,8 +417,15 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                   <input style={inputStyle} value={selected.company} placeholder="企業名"
                     onChange={e => updateCandidate(selected.id, { company: e.target.value })} autoFocus /></div>
                 <div className="drawer-field"><label>場所</label>
-                  <input style={inputStyle} value={selected.location} placeholder="場所"
-                    onChange={e => updateCandidate(selected.id, { location: e.target.value })} /></div>
+                  <input style={inputStyle} value={selected.location} placeholder="場所名 or Maps URL"
+                    onChange={e => {
+                      const parsed = parseLocationInput(e.target.value);
+                      if (parsed.mapUrl) {
+                        updateCandidate(selected.id, { location: parsed.displayName, mapUrl: parsed.mapUrl });
+                      } else {
+                        updateCandidate(selected.id, { location: e.target.value });
+                      }
+                    }} /></div>
                 <div className="drawer-field"><label>連絡先</label>
                   <input style={inputStyle} value={selected.contact} placeholder="連絡先"
                     onChange={e => updateCandidate(selected.id, { contact: e.target.value })} /></div>

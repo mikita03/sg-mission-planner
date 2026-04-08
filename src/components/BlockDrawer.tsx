@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Block, ParentCategory } from '../types';
 import { DAYS, getCatDisplay, ic, PARENT_CATEGORIES, PARENT_CATEGORY_KEYS } from '../constants/categories';
 import { m2t, t2m } from '../utils/time';
+import { parseLocationInput, getMapsLink } from '../utils/maps';
 import { MarkdownField, MdText } from './MarkdownField';
 
 type WizardStep = 'category' | 'details' | 'movement' | 'preview' | 'edit';
@@ -112,8 +113,17 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
     onClose(true);  // confirmed=true prevents draft deletion
   }
 
-  function mapsUrl(location: string) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location + ' Singapore')}`;
+  function mapsLink() {
+    return getMapsLink(block!.location, block!.mapUrl);
+  }
+
+  function handleLocationInput(value: string) {
+    const parsed = parseLocationInput(value);
+    if (parsed.mapUrl) {
+      onUpdate(block!.id, { location: parsed.displayName, mapUrl: parsed.mapUrl });
+    } else {
+      onUpdate(block!.id, { location: value, mapUrl: '' });
+    }
   }
 
   function handleSendComment() {
@@ -203,8 +213,8 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
                   <div className="drawer-field"><label>企業名</label>
                     <input type="text" value={block.detail} placeholder="例: Grab Holdings" onChange={e => handleChange('detail', e.target.value)} autoFocus /></div>
                   <div className="drawer-field"><label>場所</label>
-                    <input type="text" value={block.location} placeholder="例: One North" onChange={e => handleChange('location', e.target.value)} />
-                    {block.location?.trim() && <a href={mapsUrl(block.location)} target="_blank" rel="noopener noreferrer" className="maps-link"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAPS</a>}
+                    <input type="text" value={block.location} placeholder="場所名 or Maps URL" onChange={e => handleLocationInput(e.target.value)} />
+                    {block.location?.trim() && <a href={mapsLink()} target="_blank" rel="noopener noreferrer" className="maps-link"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAPS</a>}
                   </div>
                   <div className="drawer-field"><label>連絡先</label>
                     <input type="text" value={block.contact} placeholder="メールまたは電話" onChange={e => handleChange('contact', e.target.value)} /></div>
@@ -217,7 +227,7 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
                   <div className="drawer-field"><label>出発地</label>
                     <input type="text" value={block.fromLocation} placeholder="例: ホテル" onChange={e => handleChange('fromLocation', e.target.value)} autoFocus /></div>
                   <div className="drawer-field"><label>行先</label>
-                    <input type="text" value={block.location} placeholder="例: 訪問先" onChange={e => handleChange('location', e.target.value)} /></div>
+                    <input type="text" value={block.location} placeholder="例: 訪問先" onChange={e => handleLocationInput(e.target.value)} /></div>
                 </>
               )}
               {block.category === 'food' && (
@@ -225,8 +235,8 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
                   <div className="drawer-field"><label>店名</label>
                     <input type="text" value={block.detail} placeholder="例: Lau Pa Sat" onChange={e => handleChange('detail', e.target.value)} autoFocus /></div>
                   <div className="drawer-field"><label>場所</label>
-                    <input type="text" value={block.location} placeholder="例: Raffles Place" onChange={e => handleChange('location', e.target.value)} />
-                    {block.location?.trim() && <a href={mapsUrl(block.location)} target="_blank" rel="noopener noreferrer" className="maps-link"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAPS</a>}
+                    <input type="text" value={block.location} placeholder="場所名 or Maps URL" onChange={e => handleLocationInput(e.target.value)} />
+                    {block.location?.trim() && <a href={mapsLink()} target="_blank" rel="noopener noreferrer" className="maps-link"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAPS</a>}
                   </div>
                 </>
               )}
@@ -349,7 +359,7 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
                 {block.location && (
                   <div>
                     <span style={{ color: 'var(--text3)', marginRight: 8, fontSize: 12 }}>📍</span>{block.location}
-                    <a href={mapsUrl(block.location)} target="_blank" rel="noopener noreferrer" className="maps-link" style={{ marginLeft: 6 }}>
+                    <a href={mapsLink()} target="_blank" rel="noopener noreferrer" className="maps-link" style={{ marginLeft: 6 }}>
                       <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAP
                     </a>
                   </div>
@@ -476,8 +486,8 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
                 <>
                   <div className="drawer-field"><label>企業名</label><input type="text" value={block.detail} onChange={e => handleChange('detail', e.target.value)} /></div>
                   <div className="drawer-field"><label>場所</label>
-                    <input type="text" value={block.location} onChange={e => handleChange('location', e.target.value)} />
-                    {block.location?.trim() && <a href={mapsUrl(block.location)} target="_blank" rel="noopener noreferrer" className="maps-link"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAPS</a>}
+                    <input type="text" value={block.location} onChange={e => handleLocationInput(e.target.value)} />
+                    {block.location?.trim() && <a href={mapsLink()} target="_blank" rel="noopener noreferrer" className="maps-link"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAPS</a>}
                   </div>
                   <div className="drawer-field"><label>連絡先</label><input type="text" value={block.contact} onChange={e => handleChange('contact', e.target.value)} /></div>
                   <div className="drawer-field"><label>担当者</label><input type="text" value={block.assignee} onChange={e => handleChange('assignee', e.target.value)} /></div>
@@ -486,13 +496,13 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
               {block.category === 'move' && (
                 <>
                   <div className="drawer-field"><label>出発地</label><input type="text" value={block.fromLocation} onChange={e => handleChange('fromLocation', e.target.value)} /></div>
-                  <div className="drawer-field"><label>行先</label><input type="text" value={block.location} onChange={e => handleChange('location', e.target.value)} /></div>
+                  <div className="drawer-field"><label>行先</label><input type="text" value={block.location} onChange={e => handleLocationInput(e.target.value)} /></div>
                 </>
               )}
               {block.category === 'food' && (
                 <>
                   <div className="drawer-field"><label>店名</label><input type="text" value={block.detail} onChange={e => handleChange('detail', e.target.value)} /></div>
-                  <div className="drawer-field"><label>場所</label><input type="text" value={block.location} onChange={e => handleChange('location', e.target.value)} /></div>
+                  <div className="drawer-field"><label>場所</label><input type="text" value={block.location} onChange={e => handleLocationInput(e.target.value)} /></div>
                 </>
               )}
               {(block.category === 'atxsg' || block.category === 'sync') && (

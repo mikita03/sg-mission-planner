@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import type { Block } from '../types';
 import { SH, EH, PPM, SNAP, TMIN, TPX, DAYS, getCatDisplay, getCatCls, ic } from '../constants/categories';
 import { t2m, m2t, m2px, snap, getSGT } from '../utils/time';
+import { getMapsLink } from '../utils/maps';
 import { addTrail, addRipple } from './Shared';
 
 interface Props {
@@ -441,7 +442,9 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, isM
                 </div>
                 <div className="hover-card-time">{b.start} – {m2t(t2m(b.start) + b.dur)} ({b.dur}m)</div>
                 {b.detail && <div className="hover-card-detail">{b.detail}</div>}
-                {b.location && <div className="hover-card-location"><span className="ic ic-sm" dangerouslySetInnerHTML={{ __html: ic('pin') }} /> {b.location}</div>}
+                {b.location && <div className="hover-card-location"><span className="ic ic-sm" dangerouslySetInnerHTML={{ __html: ic('pin') }} /> {b.location}
+                  {getMapsLink(b.location, b.mapUrl) && <a href={getMapsLink(b.location, b.mapUrl)} target="_blank" rel="noopener noreferrer" className="maps-link" style={{ marginLeft: 4 }} onClick={e => e.stopPropagation()}>MAP</a>}
+                </div>}
                 {b.fromLocation && <div className="hover-card-location"><span style={{ color: 'var(--text3)' }}>From:</span> {b.fromLocation}</div>}
                 {b.memo && <div className="hover-card-memo">{b.memo}</div>}
                 <div className="hover-card-actions">
