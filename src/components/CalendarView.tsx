@@ -48,6 +48,42 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
     return { visits, confirmed, travelMin };
   }
 
+  // ═══ Overlap Detection ═══
+  function getOverlappingIds(): Set<string> {
+    const ids = new Set<string>();
+    for (const day of ['d0','d1','d2','d3']) {
+      for (const team of ['A','B']) {
+        const lane = blocks.filter(b => b && b.day === day && b.team === team && !b.draft);
+        for (let i = 0; i < lane.length; i++) {
+          const aS = t2m(lane[i].start), aE = aS + lane[i].dur;
+          for (let j = i + 1; j < lane.length; j++) {
+            const bS = t2m(lane[j].start), bE = bS + lane[j].dur;
+            if (aS < bE && bS < aE) { ids.add(lane[i].id); ids.add(lane[j].id); }
+          }
+        }
+      }
+    }
+    return ids;
+  }
+  const overlappingIds = getOverlappingIds();
+
+  // ═══ Next Event Detection ═══
+  const nextBlockId = (() => {
+    const sgt = getSGT();
+    const dayIdx = sgt.getDate() - 18; // 18=May 18
+    if (sgt.getMonth() !== 4 || dayIdx < 0 || dayIdx > 3) return null;
+    const dayKey = `d${dayIdx}`;
+    const nowM = (sgt.getHours() - SH) * 60 + sgt.getMinutes();
+    let best: Block | null = null;
+    let bestStart = Infinity;
+    for (const b of blocks) {
+      if (b.day !== dayKey || b.draft) continue;
+      const s = t2m(b.start);
+      if (s >= nowM && s < bestStart) { bestStart = s; best = b; }
+    }
+    return best?.id || null;
+  })();
+
   // ═══ Block Drag (move) ═══
   function onBlockMouseDown(e: React.MouseEvent, blockId: string) {
     if (e.button !== 0) return;
@@ -237,7 +273,9 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
     const editor = getBlockEditor(b.id);
     const isLocked = !!editor;
     const isDraft = b.draft;
-    const classes = `bk bk-${cls}${selectedId === b.id ? ' selected' : ''}${isFiltered ? ' filtered-out' : ''}${isDraft ? ' draft' : ''}`;
+    const isOverlap = overlappingIds.has(b.id);
+    const isNext = b.id === nextBlockId;
+    const classes = `bk bk-${cls}${selectedId === b.id ? ' selected' : ''}${isFiltered ? ' filtered-out' : ''}${isDraft ? ' draft' : ''}${isOverlap ? ' overlap-warn' : ''}${isNext ? ' next-block' : ''}`;
 
     return (
       <div
@@ -259,6 +297,8 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, get
           <span className="ic" dangerouslySetInnerHTML={{ __html: ic(cat.ico) }} />
           {b.label || cat.lbl}
           {isDraft && <span className="draft-tag">仮</span>}
+          {isOverlap && <span className="overlap-tag">⚠重複</span>}
+          {isNext && <span className="next-tag">NEXT▸</span>}
         </div>
         {(b.category === 'visit' || b.category === 'reserve') && b.status && b.status !== 'pending' && hpx > 30 && (
           <div className="bk-status">

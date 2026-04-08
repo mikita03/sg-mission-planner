@@ -40,7 +40,8 @@ function loadFromStorage(): TravelDayData {
 
 export function TravelDays() {
   const [data, setData] = useState<TravelDayData>(loadFromStorage);
-  const [editing, setEditing] = useState(false);
+  const [editArrival, setEditArrival] = useState(false);
+  const [editDeparture, setEditDeparture] = useState(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured || !db) return;
@@ -92,10 +93,10 @@ export function TravelDays() {
             </span>
           </div>
           <button className="btn" style={{ padding: '2px 8px', fontSize: 11 }}
-            onClick={() => setEditing(!editing)}>{editing ? 'DONE' : 'EDIT'}</button>
+            onClick={() => setEditArrival(!editArrival)}>{editArrival ? 'DONE' : 'EDIT'}</button>
         </div>
 
-        {!editing ? (
+        {!editArrival ? (
           <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 12, color: 'var(--text2)', lineHeight: 2 }}>
             <div><span style={{ color: 'var(--text3)', marginRight: 8 }}>✈</span>{data.arrival.departure} → {data.arrival.arrivalTime}</div>
             {data.arrival.flight && <div><span style={{ color: 'var(--text3)', marginRight: 8 }}>便</span>{data.arrival.flight}</div>}
@@ -131,9 +132,11 @@ export function TravelDays() {
               5/22 FRI — DEPARTURE
             </span>
           </div>
+          <button className="btn" style={{ padding: '2px 8px', fontSize: 11 }}
+            onClick={() => setEditDeparture(!editDeparture)}>{editDeparture ? 'DONE' : 'EDIT'}</button>
         </div>
 
-        {!editing ? (
+        {!editDeparture ? (
           <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 12, color: 'var(--text2)', lineHeight: 2 }}>
             <div><span style={{ color: 'var(--text3)', marginRight: 8 }}>🏨</span>CO {data.departure.hotelCO}</div>
             <div><span style={{ color: 'var(--text3)', marginRight: 8 }}>✈</span>{data.departure.departure} → {data.departure.arrivalTime}</div>

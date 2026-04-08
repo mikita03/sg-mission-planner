@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Tab, Block } from './types';
 import { useBlocks } from './hooks/useBlocks';
 import { useUser } from './hooks/useUser';
@@ -16,7 +16,7 @@ import { CovertExport } from './components/CovertExport';
 import { TeamRosterPanel } from './components/TeamRoster';
 import { TravelDays } from './components/TravelDays';
 import { isFirebaseConfigured, db } from './firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, update } from 'firebase/database';
 
 const MISSION_START = new Date('2026-05-18T00:00:00+08:00');
 
@@ -59,6 +59,31 @@ export default function App() {
     );
     return () => unsubs.forEach(u => u());
   }, []);
+
+  // 5-5: Remote change notification
+  const prevBlocksRef = useRef<Map<string, number>>(new Map());
+  const initRef = useRef(false);
+  useEffect(() => {
+    if (!loaded || !blocks.length) return;
+    const prev = prevBlocksRef.current;
+    if (!initRef.current) {
+      // First load - just populate, don't notify
+      blocks.forEach(b => prev.set(b.id, b.editedAt || 0));
+      initRef.current = true;
+      return;
+    }
+    const myName = user?.name || '';
+    for (const b of blocks) {
+      const oldAt = prev.get(b.id) || 0;
+      if (b.editedAt && b.editedAt > oldAt && b.editedBy && b.editedBy !== myName) {
+        showToast(`${b.editedBy} が「${b.label || b.category}」を更新`);
+        break; // one toast per batch
+      }
+    }
+    const next = new Map<string, number>();
+    blocks.forEach(b => next.set(b.id, b.editedAt || 0));
+    prevBlocksRef.current = next;
+  }, [blocks, loaded, user?.name]);
 
   useEffect(() => {
     function tick() {
@@ -198,6 +223,22 @@ export default function App() {
 
   const handleDeleteBlock = useCallback((id: string) => {
     deleteBlock(id);
+    // 5-4: Clear blockId in visit_candidates that reference this block
+    try {
+      const raw = localStorage.getItem('sg_mission_visits');
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          const updated = arr.map((c: any) => c.blockId === id ? { ...c, blockId: '' } : c);
+          localStorage.setItem('sg_mission_visits', JSON.stringify(updated));
+          if (isFirebaseConfigured && db) {
+            const obj: Record<string, any> = {};
+            updated.forEach((c: any) => { obj[c.id] = c; });
+            update(ref(db!, 'visit_candidates'), obj).catch(() => {});
+          }
+        }
+      }
+    } catch { /* */ }
     setSelectedBlockId(null);
     setActiveBlock(null);
     showToast('DELETED');
