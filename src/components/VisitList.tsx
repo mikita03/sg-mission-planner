@@ -109,6 +109,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
     saveTags(tagPresets.filter(t => t !== tag));
   }, [tagPresets, saveTags]);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [showTagInput, setShowTagInput] = useState(false);
 
   // Firebase sync
   useEffect(() => {
@@ -328,14 +329,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                     </div>
                     <div className="drawer-field"><label>ステータス</label>
                       <select style={inputStyle} value={c.status}
-                        onChange={e => {
-                          const newStatus = e.target.value as VisitCandidate['status'];
-                          if (newStatus === 'confirmed') {
-                            confirmCandidate(c.id);
-                          } else {
-                            updateCandidate(c.id, { status: newStatus });
-                          }
-                        }}>
+                        onChange={e => updateCandidate(c.id, { status: e.target.value as VisitCandidate['status'] })}>
                         {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                       </select>
                     </div>
@@ -343,7 +337,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
 
                   {/* Tags */}
                   <div className="drawer-field" style={{ marginTop: 8 }}><label>タグ</label>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                       {tagPresets.map(tag => (
                         <span key={tag} style={{ position: 'relative', display: 'inline-flex' }}>
                           <button
@@ -362,49 +356,69 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                           )}
                         </span>
                       ))}
+                      {!showTagInput && (
+                        <button className="btn" style={{ padding: '3px 8px', fontSize: 11 }}
+                          onClick={() => setShowTagInput(true)}>+</button>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <input style={{ ...inputStyle, flex: 1 }} value={tagInput} placeholder="新しいタグを追加"
-                        onChange={e => setTagInput(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' && tagInput.trim()) {
-                            addTagPreset(tagInput.trim());
-                            updateCandidate(c.id, { tags: [...c.tags, tagInput.trim()] });
-                            setTagInput('');
-                          }
-                        }} />
-                      <button className="btn" style={{ padding: '4px 10px', fontSize: 11 }}
-                        onClick={() => { if (tagInput.trim()) { addTagPreset(tagInput.trim()); updateCandidate(c.id, { tags: [...c.tags, tagInput.trim()] }); setTagInput(''); } }}>+</button>
-                    </div>
+                    {showTagInput && (
+                      <div style={{ display: 'flex', gap: 4, marginTop: 6, animation: 'fadeIn .2s ease' }}>
+                        <input style={{ ...inputStyle, flex: 1 }} value={tagInput} placeholder="新しいタグ名を入力"
+                          autoFocus
+                          onChange={e => setTagInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && tagInput.trim()) {
+                              addTagPreset(tagInput.trim());
+                              updateCandidate(c.id, { tags: [...c.tags, tagInput.trim()] });
+                              setTagInput(''); setShowTagInput(false);
+                            }
+                            if (e.key === 'Escape') { setTagInput(''); setShowTagInput(false); }
+                          }} />
+                        <button className="btn" style={{ padding: '4px 10px', fontSize: 11 }}
+                          onClick={() => {
+                            if (tagInput.trim()) { addTagPreset(tagInput.trim()); updateCandidate(c.id, { tags: [...c.tags, tagInput.trim()] }); }
+                            setTagInput(''); setShowTagInput(false);
+                          }}>OK</button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Schedule Info */}
-                  <div style={{ marginTop: 10, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
-                    <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', letterSpacing: '.08em', display: 'block', marginBottom: 6 }}>
-                      SCHEDULE（確定時にカレンダーに反映）
-                    </label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6 }}>
-                      <div className="drawer-field"><label>日程</label>
-                        <select style={inputStyle} value={c.day}
-                          onChange={e => updateCandidate(c.id, { day: e.target.value })}>
-                          <option value="">—</option>
-                          {DAYS.map(d => <option key={d.key} value={d.key}>{d.label.split(' ')[0]}</option>)}
-                        </select></div>
-                      <div className="drawer-field"><label>Team</label>
-                        <select style={inputStyle} value={c.team}
-                          onChange={e => updateCandidate(c.id, { team: e.target.value })}>
-                          <option value="A">A</option><option value="B">B</option>
-                        </select></div>
-                      <div className="drawer-field"><label>開始時刻</label>
-                        <input type="time" style={inputStyle} value={c.startTime} step={900}
-                          onChange={e => updateCandidate(c.id, { startTime: e.target.value })} /></div>
-                      <div className="drawer-field"><label>時間(分)</label>
-                        <select style={inputStyle} value={c.duration}
-                          onChange={e => updateCandidate(c.id, { duration: Number(e.target.value) })}>
-                          {[30,45,60,90,120].map(m => <option key={m} value={m}>{m}m</option>)}
-                        </select></div>
+                  {/* Schedule Info - only when confirmed */}
+                  {c.status === 'confirmed' && !c.blockId && (
+                    <div style={{ marginTop: 10, padding: '10px 0', borderTop: '1px solid var(--border)', animation: 'fadeIn .3s ease' }}>
+                      <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--neon-cyan)', letterSpacing: '.08em', display: 'block', marginBottom: 6 }}>
+                        SCHEDULE — 日時を入力してカレンダーに反映
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6, alignItems: 'end' }}>
+                        <div className="drawer-field"><label>日程</label>
+                          <select style={inputStyle} value={c.day}
+                            onChange={e => updateCandidate(c.id, { day: e.target.value })}>
+                            <option value="">—</option>
+                            {DAYS.map(d => <option key={d.key} value={d.key}>{d.label.split(' ')[0]}</option>)}
+                          </select></div>
+                        <div className="drawer-field"><label>Team</label>
+                          <select style={inputStyle} value={c.team}
+                            onChange={e => updateCandidate(c.id, { team: e.target.value })}>
+                            <option value="A">A</option><option value="B">B</option>
+                          </select></div>
+                        <div className="drawer-field"><label>開始時刻</label>
+                          <input type="time" style={inputStyle} value={c.startTime} step={900}
+                            onChange={e => updateCandidate(c.id, { startTime: e.target.value })} /></div>
+                        <div className="drawer-field"><label>時間(分)</label>
+                          <select style={inputStyle} value={c.duration}
+                            onChange={e => updateCandidate(c.id, { duration: Number(e.target.value) })}>
+                            {[30,45,60,90,120].map(m => <option key={m} value={m}>{m}m</option>)}
+                          </select></div>
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <button className="btn btn-primary" style={{ fontSize: 12, width: '100%' }}
+                          onClick={() => confirmCandidate(c.id)}
+                          disabled={!c.day || !c.startTime}>
+                          <span className="ic" dangerouslySetInnerHTML={{ __html: ic('calendar') }} /> スケジュールに反映
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Actions */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
@@ -412,12 +426,6 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                       onClick={() => deleteCandidate(c.id)}>
                       <span className="ic" dangerouslySetInnerHTML={{ __html: ic('trash') }} /> DELETE
                     </button>
-                    {c.status !== 'confirmed' && (
-                      <button className="btn btn-primary" style={{ fontSize: 12 }}
-                        onClick={() => confirmCandidate(c.id)}>
-                        <span className="ic" dangerouslySetInnerHTML={{ __html: ic('check') }} /> 確定してスケジュールに反映
-                      </button>
-                    )}
                     {c.status === 'confirmed' && c.blockId && (
                       <button className="btn" style={{ fontSize: 12 }}
                         onClick={() => { onSelectBlock(c.blockId); }}>
