@@ -47,6 +47,7 @@ export default function App() {
       { path: 'roster', key: 'sg_mission_roster' },
       { path: 'travel', key: 'sg_mission_travel' },
       { path: 'visit_candidates', key: 'sg_mission_visits' },
+      { path: 'visit_tags', key: 'sg_mission_tags' },
     ];
     const unsubs = syncs.map(({ path, key }) =>
       onValue(ref(db!, path), (snap) => {

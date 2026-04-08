@@ -37,7 +37,19 @@ const PRIORITY_OPTIONS = [
   { value: 'medium', label: '中', color: 'var(--neon-amber)' },
   { value: 'low', label: '低', color: 'var(--text3)' },
 ];
-const TAG_PRESETS = ['FinTech', 'EC', 'AI/ML', 'SaaS', 'Gov', 'Logistics', 'Healthcare', 'Startup'];
+const DEFAULT_TAGS = ['FinTech', 'EC', 'AI/ML', 'SaaS', 'Gov', 'Logistics', 'Healthcare', 'Startup'];
+const TAG_STORAGE_KEY = 'sg_mission_tags';
+
+function loadTags(): string[] {
+  try {
+    const saved = localStorage.getItem(TAG_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /* */ }
+  return [...DEFAULT_TAGS];
+}
 
 function defaultCandidate(userName: string): VisitCandidate {
   return {
@@ -67,6 +79,35 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
   const [candidates, setCandidates] = useState<VisitCandidate[]>(loadCandidates);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
+  const [tagPresets, setTagPresets] = useState<string[]>(loadTags);
+
+  // Sync tags from Firebase
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db) return;
+    const unsub = onValue(ref(db, 'visit_tags'), (snap) => {
+      const val = snap.val();
+      if (val && Array.isArray(val)) {
+        setTagPresets(val);
+        try { localStorage.setItem(TAG_STORAGE_KEY, JSON.stringify(val)); } catch {}
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const saveTags = useCallback((newTags: string[]) => {
+    setTagPresets(newTags);
+    try { localStorage.setItem(TAG_STORAGE_KEY, JSON.stringify(newTags)); } catch {}
+    if (isFirebaseConfigured && db) set(ref(db, 'visit_tags'), newTags);
+  }, []);
+
+  const addTagPreset = useCallback((tag: string) => {
+    if (!tag.trim() || tagPresets.includes(tag.trim())) return;
+    saveTags([...tagPresets, tag.trim()]);
+  }, [tagPresets, saveTags]);
+
+  const removeTagPreset = useCallback((tag: string) => {
+    saveTags(tagPresets.filter(t => t !== tag));
+  }, [tagPresets, saveTags]);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
 
   // Firebase sync
@@ -303,28 +344,37 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                   {/* Tags */}
                   <div className="drawer-field" style={{ marginTop: 8 }}><label>タグ</label>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
-                      {TAG_PRESETS.map(tag => (
-                        <button key={tag}
-                          className={`wizard-sub-btn-sm${c.tags.includes(tag) ? ' selected' : ''}`}
-                          onClick={() => {
-                            const newTags = c.tags.includes(tag) ? c.tags.filter(t => t !== tag) : [...c.tags, tag];
-                            updateCandidate(c.id, { tags: newTags });
-                          }}>
-                          {tag}
-                        </button>
+                      {tagPresets.map(tag => (
+                        <span key={tag} style={{ position: 'relative', display: 'inline-flex' }}>
+                          <button
+                            className={`wizard-sub-btn-sm${c.tags.includes(tag) ? ' selected' : ''}`}
+                            onClick={() => {
+                              const newTags = c.tags.includes(tag) ? c.tags.filter(t => t !== tag) : [...c.tags, tag];
+                              updateCandidate(c.id, { tags: newTags });
+                            }}>
+                            {tag}
+                          </button>
+                          {!DEFAULT_TAGS.includes(tag) && (
+                            <button
+                              style={{ position: 'absolute', top: -4, right: -4, width: 14, height: 14, borderRadius: '50%', background: 'var(--bg3)', border: '1px solid var(--border)', color: 'var(--text3)', fontSize: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0 }}
+                              onClick={(e) => { e.stopPropagation(); removeTagPreset(tag); }}
+                              title="タグを削除">×</button>
+                          )}
+                        </span>
                       ))}
                     </div>
                     <div style={{ display: 'flex', gap: 4 }}>
-                      <input style={{ ...inputStyle, flex: 1 }} value={tagInput} placeholder="カスタムタグ"
+                      <input style={{ ...inputStyle, flex: 1 }} value={tagInput} placeholder="新しいタグを追加"
                         onChange={e => setTagInput(e.target.value)}
                         onKeyDown={e => {
                           if (e.key === 'Enter' && tagInput.trim()) {
+                            addTagPreset(tagInput.trim());
                             updateCandidate(c.id, { tags: [...c.tags, tagInput.trim()] });
                             setTagInput('');
                           }
                         }} />
                       <button className="btn" style={{ padding: '4px 10px', fontSize: 11 }}
-                        onClick={() => { if (tagInput.trim()) { updateCandidate(c.id, { tags: [...c.tags, tagInput.trim()] }); setTagInput(''); } }}>+</button>
+                        onClick={() => { if (tagInput.trim()) { addTagPreset(tagInput.trim()); updateCandidate(c.id, { tags: [...c.tags, tagInput.trim()] }); setTagInput(''); } }}>+</button>
                     </div>
                   </div>
 
