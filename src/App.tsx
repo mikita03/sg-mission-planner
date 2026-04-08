@@ -8,6 +8,7 @@ import { ic, DAYS, PARENT_CATEGORIES, PARENT_CATEGORY_KEYS } from './constants/c
 import { getSGT, formatSGTDate, formatSGTTime } from './utils/time';
 
 import { BootScreen, ParticleCanvas, FxCanvas, HudFrame, MouseGlow, Toast, showToast, triggerGlitch } from './components/Shared';
+import { LoginBackground } from './components/LoginBackground';
 import { CalendarView } from './components/CalendarView';
 import { BlockDrawer } from './components/BlockDrawer';
 import { VisitList } from './components/VisitList';
@@ -333,10 +334,15 @@ export default function App() {
           </div>
         </div>
       )}
-      <ParticleCanvas />
-      <FxCanvas />
-      <HudFrame />
-      <MouseGlow />
+      {/* Background — different for login vs app */}
+      {!user ? <LoginBackground /> : (
+        <>
+          <ParticleCanvas />
+          <FxCanvas />
+          <HudFrame />
+          <MouseGlow />
+        </>
+      )}
       <Toast />
 
       {/* Covert Ops PDF Export */}
