@@ -50,7 +50,7 @@ export function CovertExport({ blocks, onDone }: Props) {
       if (i >= processed.length) {
         setProgress(100);
         setTimeout(() => { if (cancelled) return; triggerGlitch(); setStamped(true); }, 300);
-        setTimeout(() => { if (cancelled) return; exportBusinessPDF(blocks); }, 800);
+        setTimeout(() => { if (cancelled) return; exportBusinessPDF(blocks).catch(e => console.error('PDF error:', e)); }, 800);
         setTimeout(() => { if (cancelled) return; setDone(true); setTimeout(() => onDoneRef.current(), 600); }, 2000);
         return;
       }
