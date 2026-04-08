@@ -84,7 +84,6 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
   }, [data.rateJPY]);
 
   const total = useMemo(() => data.items.reduce((s, item) => s + toSGD(item), 0), [data.items, toSGD]);
-  const perPerson = total / 4;
   const isOverBudget = total > BUDGET_LIMIT_SGD;
 
   // 8-4: Countup animation
