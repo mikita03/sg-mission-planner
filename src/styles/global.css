@@ -757,3 +757,24 @@ body{
   /* ═══ Drawer fields — larger ═══ */
   .drawer-field input,.drawer-field select,.drawer-field textarea{min-height:40px;font-size:14px}
 }
+
+/* ═══ Phase 7: UX Improvements ═══ */
+
+/* 7-1: Snap guide lines */
+.snap-guide{position:absolute;left:0;right:0;height:1px;background:var(--neon-amber);opacity:.5;z-index:30;pointer-events:none;box-shadow:0 0 4px var(--neon-amber)}
+
+/* 7-2: Paste banner */
+.paste-banner{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:8px;background:linear-gradient(135deg,rgba(0,229,255,.08),rgba(168,85,247,.06));border:1px solid var(--neon-cyan);border-radius:var(--radius);font-family:Share Tech Mono,monospace;font-size:12px;color:var(--neon-cyan);animation:fadeIn .3s ease}
+.paste-banner select{padding:4px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:Share Tech Mono,monospace;font-size:11px}
+
+/* 7-3: Kanban card drag-over indicator */
+.kanban-card.drag-over{border-top:2px solid var(--neon-cyan)!important;margin-top:-2px}
+
+/* 7-4: No additional CSS needed (uses existing inputStyle) */
+
+/* 7-5: Keyboard shortcuts modal */
+.shortcut-list{display:flex;flex-direction:column;gap:8px}
+.shortcut-row{display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--border)}
+.shortcut-row:last-child{border-bottom:none}
+.shortcut-row kbd{display:inline-block;min-width:44px;padding:4px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;font-family:Share Tech Mono,monospace;font-size:12px;color:var(--neon-cyan);text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.shortcut-row span{font-family:Rajdhani,sans-serif;font-size:14px;color:var(--text2)}

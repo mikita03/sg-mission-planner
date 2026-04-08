@@ -87,6 +87,22 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, isM
   })();
 
   // ═══ Block Drag (move) ═══
+  function showSnapGuides(lane: HTMLElement, dayKey: string, team: string, excludeId: string) {
+    const guides: number[] = [];
+    blocks.filter(b => b.day === dayKey && b.team === team && b.id !== excludeId && !b.draft)
+      .forEach(b => { const s = t2m(b.start); guides.push(s, s + b.dur); });
+    const unique = [...new Set(guides)];
+    unique.forEach(m => {
+      const g = document.createElement('div');
+      g.className = 'snap-guide';
+      g.style.top = m2px(m) + 'px';
+      lane.appendChild(g);
+    });
+  }
+  function clearSnapGuides() {
+    document.querySelectorAll('.snap-guide').forEach(el => el.remove());
+  }
+
   function onBlockMouseDown(e: React.MouseEvent, blockId: string) {
     if (e.button !== 0) return;
     const el = document.querySelector(`[data-block-id="${blockId}"]`) as HTMLElement;
@@ -99,6 +115,8 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, isM
     const origTop = parseFloat(el.style.top);
     el.classList.add('dragging');
     dragRef.current = { id: blockId, el, lane, grabOffset, origTop };
+    const bl = blocks.find(b => b.id === blockId);
+    if (bl) showSnapGuides(lane, bl.day, bl.team, blockId);
     let lastMouse = { x: 0, y: 0 };
 
     function onMove(ev: MouseEvent) {
@@ -122,6 +140,7 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, isM
       const nm = snap(parseFloat(dragRef.current.el.style.top) / PPM);
       const origNm = snap(dragRef.current.origTop / PPM);
       if (nm !== origNm) { onUpdateBlock(dragRef.current.id, { start: m2t(nm) }); addRipple(lastMouse.x, lastMouse.y); }
+      clearSnapGuides();
       dragRef.current = null;
     }
     document.addEventListener('mousemove', onMove);

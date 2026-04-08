@@ -35,6 +35,8 @@ export default function App() {
   const [wizardMode, setWizardMode] = useState(false);
   const isMobile = useIsMobile();
   const [mobileDay, setMobileDay] = useState(0);
+  const [clipboard, setClipboard] = useState<Block | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Clocks
   const [sgtTime, setSgtTime] = useState('--:--:--');
@@ -254,6 +256,37 @@ export default function App() {
       showToast('DUPLICATED');
     }
   }, [duplicateBlock]);
+
+  // 7-2: Copy & Paste
+  const handleCopyBlock = useCallback((id: string) => {
+    const block = blocks.find(b => b.id === id);
+    if (block) { setClipboard({ ...block }); showToast('COPIED'); }
+  }, [blocks]);
+
+  const handlePasteBlock = useCallback((day: string, team: string) => {
+    if (!clipboard) return;
+    const { id: _id, draft: _d, editedBy: _e, editedAt: _a, comments: _c, ...rest } = clipboard;
+    const newBlock = addBlock({ ...rest, day: day as Block['day'], team: team as Block['team'], draft: false });
+    setSelectedBlockId(newBlock.id);
+    showToast('PASTED');
+  }, [clipboard, addBlock]);
+
+  // 7-5: Keyboard shortcuts
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA' || (e.target as HTMLElement).tagName === 'SELECT') return;
+      if (e.key === '?') { setShowShortcuts(prev => !prev); return; }
+      if (e.key === 'Escape') { handleCloseDrawer(); setShowShortcuts(false); return; }
+      if (e.key === 'c' && selectedBlockId) { handleCopyBlock(selectedBlockId); return; }
+      if (e.key === 'Delete' && selectedBlockId) { const b = blocks.find(bl => bl.id === selectedBlockId); if (b && !b.draft) handleDeleteBlock(selectedBlockId); return; }
+      if (e.key === '1') handleTabSwitch('schedule');
+      if (e.key === '2') handleTabSwitch('visits');
+      if (e.key === '3') handleTabSwitch('budget');
+      if (e.key === '4') handleTabSwitch('review');
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedBlockId, handleCopyBlock, handleDeleteBlock, handleCloseDrawer, handleTabSwitch, blocks]);
 
   if (!loaded) return null;
 
@@ -475,6 +508,26 @@ export default function App() {
                 {/* Team Roster */}
                 {!isMobile && <TeamRosterPanel visibleDays={currentView === 0 ? [0, 1] : [2, 3]} />}
 
+                {/* 7-2: Paste Banner */}
+                {clipboard && (
+                  <div className="paste-banner">
+                    <span className="ic ic-sm" dangerouslySetInnerHTML={{ __html: ic('copy') }} />
+                    <span>「{clipboard.label || clipboard.category}」をコピー中</span>
+                    <select id="paste-day" defaultValue={isMobile ? `d${mobileDay}` : `d${currentView * 2}`}>
+                      {DAYS.map(d => <option key={d.key} value={d.key}>{d.label.split(' ')[0]}</option>)}
+                    </select>
+                    <select id="paste-team" defaultValue="A">
+                      <option value="A">Team A</option><option value="B">Team B</option>
+                    </select>
+                    <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: 11 }} onClick={() => {
+                      const day = (document.getElementById('paste-day') as HTMLSelectElement).value;
+                      const team = (document.getElementById('paste-team') as HTMLSelectElement).value;
+                      handlePasteBlock(day, team);
+                    }}>PASTE</button>
+                    <button className="btn" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => setClipboard(null)}>✕</button>
+                  </div>
+                )}
+
                 <CalendarView
                   blocks={blocks}
                   currentView={currentView}
@@ -518,11 +571,38 @@ export default function App() {
             onUpdate={handleUpdateBlock}
             onDelete={handleDeleteBlock}
             onDuplicate={handleDuplicateBlock}
+            onCopy={handleCopyBlock}
             onAddComment={addComment}
             onAddMovement={handleAddBlock}
           />
         </div>
       </div>
+
+      {/* 7-5: Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="modal-overlay" style={{ zIndex: 9000 }} onClick={() => setShowShortcuts(false)}>
+          <div className="modal-panel" style={{ width: 400 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ margin: 0, fontFamily: 'Orbitron, monospace', fontSize: 14, color: 'var(--neon-cyan)', letterSpacing: '.1em' }}>KEYBOARD SHORTCUTS</h2>
+              <button className="btn" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setShowShortcuts(false)}>CLOSE</button>
+            </div>
+            <div className="shortcut-list">
+              {[
+                ['?', 'ショートカット一覧を表示'],
+                ['Esc', '選択解除 / ドロワーを閉じる'],
+                ['c', '選択中ブロックをコピー'],
+                ['Delete', '選択中ブロックを削除'],
+                ['1-4', 'タブ切替（Schedule / Visits / Budget / Review）'],
+              ].map(([key, desc]) => (
+                <div key={key} className="shortcut-row">
+                  <kbd>{key}</kbd>
+                  <span>{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ Mobile Bottom Nav (6-5) ═══ */}
       {isMobile && (

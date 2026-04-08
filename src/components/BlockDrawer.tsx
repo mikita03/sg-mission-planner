@@ -16,11 +16,12 @@ interface Props {
   onUpdate: (id: string, updates: Partial<Block>) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onCopy: (id: string) => void;
   onAddComment: (blockId: string, text: string) => void;
   onAddMovement: (partial: Partial<Block>) => void;
 }
 
-export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove, onClose, onUpdate, onDelete, onDuplicate, onAddComment, onAddMovement }: Props) {
+export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove, onClose, onUpdate, onDelete, onDuplicate, onCopy, onAddComment, onAddMovement }: Props) {
   const [step, setStep] = useState<WizardStep>('category');
   const [commentText, setCommentText] = useState('');
   const [moveBefore, setMoveBefore] = useState({ add: false, subType: 'taxi', dur: 30, from: '' });
@@ -460,6 +461,9 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
             </button>
             <button className="btn" onClick={() => onDuplicate(block.id)}>
               <span className="ic" dangerouslySetInnerHTML={{ __html: ic('copy') }} /> DUPLICATE
+            </button>
+            <button className="btn" onClick={() => onCopy(block.id)}>
+              <span className="ic" dangerouslySetInnerHTML={{ __html: ic('copy') }} /> COPY
             </button>
           </div>
         )}

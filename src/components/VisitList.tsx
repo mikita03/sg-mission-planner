@@ -24,6 +24,7 @@ export interface VisitCandidate {
   blockId: string;
   createdBy: string;
   createdAt: number;
+  sortOrder: number;
 }
 
 const STORAGE_KEY = 'sg_mission_visits';
@@ -62,6 +63,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
   const [showTagInput, setShowTagInput] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [tagPresets, setTagPresets] = useState<string[]>(loadTags);
+  const [searchQuery, setSearchQuery] = useState('');
   const dragRef = useRef<{ id: string; fromStatus: string } | null>(null);
 
   // Firebase sync
@@ -108,7 +110,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
       id: genId(), company: '', contact: '', location: '', assignee: '', memo: '',
       status: 'candidate', priority: 'medium', tags: [],
       day: '', team: 'A', startTime: '', duration: 60, blockId: '',
-      createdBy: userName || '', createdAt: Date.now(),
+      createdBy: userName || '', createdAt: Date.now(), sortOrder: Date.now(),
     };
     save([...candidates, nc]);
     setSelectedId(nc.id);
@@ -138,7 +140,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
     showToast('SCHEDULED');
   }, [candidates, onAddBlock, updateCandidate]);
 
-  // Drag & drop between columns
+  // Drag & drop between columns + reorder
   function onCardDragStart(e: React.DragEvent, id: string, status: string) {
     dragRef.current = { id, fromStatus: status };
     e.dataTransfer.effectAllowed = 'move';
@@ -147,7 +149,33 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
   function onColDrop(e: React.DragEvent, toStatus: VisitCandidate['status']) {
     e.preventDefault();
     if (!dragRef.current) return;
-    updateCandidate(dragRef.current.id, { status: toStatus });
+    const { id, fromStatus } = dragRef.current;
+    if (fromStatus !== toStatus) {
+      updateCandidate(id, { status: toStatus });
+    }
+    dragRef.current = null;
+  }
+  function onCardDrop(e: React.DragEvent, targetId: string, targetStatus: VisitCandidate['status']) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!dragRef.current || dragRef.current.id === targetId) { dragRef.current = null; return; }
+    const { id, fromStatus } = dragRef.current;
+    // Get sorted cards in target column
+    const colCards = candidates.filter(c => c.status === targetStatus).sort((a, b) => (a.sortOrder || a.createdAt) - (b.sortOrder || b.createdAt));
+    const targetIdx = colCards.findIndex(c => c.id === targetId);
+    // Assign new sortOrder: place dragged card before the target
+    const now = Date.now();
+    const updates: { id: string; updates: Partial<VisitCandidate> }[] = [];
+    colCards.splice(targetIdx, 0, candidates.find(c => c.id === id)!);
+    const unique = colCards.filter((c, i, arr) => c && arr.findIndex(x => x.id === c.id) === i);
+    unique.forEach((c, i) => {
+      updates.push({ id: c.id, updates: { sortOrder: now + i, ...(c.id === id && fromStatus !== targetStatus ? { status: targetStatus } : {}) } });
+    });
+    const newC = candidates.map(c => {
+      const u = updates.find(x => x.id === c.id);
+      return u ? { ...c, ...u.updates } : c;
+    });
+    save(newC);
     dragRef.current = null;
   }
 
@@ -161,7 +189,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
   return (
     <div style={{ animation: 'fadeIn .4s ease' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 16, color: 'var(--neon-cyan)', letterSpacing: '.08em' }}>
           VISIT CANDIDATES
         </div>
@@ -170,10 +198,27 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
         </button>
       </div>
 
+      {/* 7-4: Search */}
+      <div style={{ marginBottom: 10 }}>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="検索（企業名, 場所, タグ, 担当者）"
+          style={{ ...inputStyle, width: '100%', fontSize: 13 }}
+        />
+      </div>
+
       {/* Kanban Board */}
       <div className="kanban">
         {COLUMNS.map(col => {
-          const colCards = candidates.filter(c => c.status === col.key);
+          const q = searchQuery.toLowerCase().trim();
+          const colCards = candidates.filter(c => {
+            if (c.status !== col.key) return false;
+            if (!q) return true;
+            return c.company.toLowerCase().includes(q) || c.location.toLowerCase().includes(q)
+              || c.assignee.toLowerCase().includes(q) || c.tags.some(t => t.toLowerCase().includes(q));
+          }).sort((a, b) => (a.sortOrder || a.createdAt) - (b.sortOrder || b.createdAt));
           return (
             <div key={col.key} className={`kanban-col ${col.cls}`}
               onDragOver={onColDragOver}
@@ -189,6 +234,9 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                       className={`kanban-card${selectedId === c.id ? ' selected' : ''}`}
                       draggable
                       onDragStart={e => onCardDragStart(e, c.id, c.status)}
+                      onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
+                      onDragLeave={e => e.currentTarget.classList.remove('drag-over')}
+                      onDrop={e => { e.currentTarget.classList.remove('drag-over'); onCardDrop(e, c.id, col.key); }}
                       onClick={() => { setSelectedId(selectedId === c.id ? null : c.id); setEditMode(false); }}>
                       <div className="kanban-card-company">
                         <span className="pri-dot" style={{ background: p.color }} />
