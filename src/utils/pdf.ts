@@ -150,16 +150,18 @@ function buildSections(blocks: Block[]): string[] {
     const toSGD = (item: BudgetItem) =>
       item.currency === 'SGD' ? item.unitPrice * item.quantity : (item.unitPrice * item.quantity) / budget.rateJPY;
     const total = budget.items.reduce((s, item) => s + toSGD(item), 0);
+    const toJPY = (sgd: number) => Math.round(sgd * budget.rateJPY).toLocaleString();
 
     let brows = '';
     budget.items.forEach((item, i) => {
       const bg = i % 2 === 0 ? '#fafafa' : '#fff';
+      const subtotalSGD = toSGD(item);
       brows += `<tr style="background: ${bg}; border-bottom: 1px solid #eee;">
         <td style="padding: 3px 6px;">${item.category}</td>
         <td style="padding: 3px 6px;">${item.name}</td>
         <td style="padding: 3px 6px; text-align: right;">${item.currency === 'SGD' ? 'S$' : '¥'}${item.unitPrice.toLocaleString()}</td>
         <td style="padding: 3px 6px; text-align: right;">${item.quantity}</td>
-        <td style="padding: 3px 6px; text-align: right; font-weight: 600;">S$${toSGD(item).toFixed(0)}</td>
+        <td style="padding: 3px 6px; text-align: right; font-weight: 600;">¥${toJPY(subtotalSGD)}</td>
       </tr>`;
     });
 
@@ -171,16 +173,16 @@ function buildSections(blocks: Block[]): string[] {
           <th style="text-align: left; padding: 3px 6px; color: #888;">項目</th>
           <th style="text-align: right; padding: 3px 6px; color: #888;">単価</th>
           <th style="text-align: right; padding: 3px 6px; color: #888;">数量</th>
-          <th style="text-align: right; padding: 3px 6px; color: #888;">小計 (SGD)</th>
+          <th style="text-align: right; padding: 3px 6px; color: #888;">小計</th>
         </tr></thead>
         <tbody>${brows}
           <tr style="border-top: 2px solid #333; font-weight: 700;">
             <td colspan="4" style="text-align: right; padding: 6px;">合計</td>
-            <td style="text-align: right; padding: 6px; font-size: 12px;">S$${total.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
+            <td style="text-align: right; padding: 6px; font-size: 12px;">¥${toJPY(total)}（S$${total.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}）</td>
           </tr>
           <tr>
             <td colspan="4" style="text-align: right; padding: 3px 6px; color: #666;">1人あたり</td>
-            <td style="text-align: right; padding: 3px 6px; color: #666;">S$${(total / 4).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}（≈ ¥${Math.round(total / 4 * budget.rateJPY).toLocaleString()}）</td>
+            <td style="text-align: right; padding: 3px 6px; color: #666;">¥${toJPY(total / 4)}（S$${(total / 4).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}）</td>
           </tr>
         </tbody>
       </table>

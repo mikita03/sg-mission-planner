@@ -49,7 +49,7 @@ function defaultItems(): BudgetItem[] {
 export function Budget(_props: { userName?: string; isMobile?: boolean }) {
   const [data, setData] = useState<BudgetData>({ items: defaultItems(), rateJPY: DEFAULT_RATE, budgetLimit: DEFAULT_LIMIT });
   const [loaded, setLoaded] = useState(true);
-  const [displayCurrency, setDisplayCurrency] = useState<'SGD' | 'JPY'>('SGD');
+  const [displayCurrency, setDisplayCurrency] = useState<'SGD' | 'JPY'>('JPY');
 
   useEffect(() => {
     if (isFirebaseConfigured && db) {
