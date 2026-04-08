@@ -576,3 +576,8 @@ body{
 .comment-item:hover .entry-actions{opacity:1}
 .entry-action-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 4px;transition:color .15s}
 .entry-action-btn:hover{color:var(--neon-cyan)}
+
+/* ═══ Review Reactions — hover to show picker ═══ */
+.review-reactions{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;align-items:center;min-height:4px}
+.reaction-picker-toggle{display:none;gap:2px;align-items:center}
+.comment-item:hover .reaction-picker-toggle{display:inline-flex}

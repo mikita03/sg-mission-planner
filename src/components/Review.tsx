@@ -235,8 +235,8 @@ export function Review({ userName }: { userName?: string }) {
 
               {/* Reactions */}
               {!isEditing && (
-                <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {/* Existing reactions */}
+                <div className="review-reactions">
+                  {/* Existing reactions (always visible if any) */}
                   {Object.entries(reactions).map(([emoji, users]) => {
                     if (!Array.isArray(users) || users.length === 0) return null;
                     const isMine = users.includes(me);
@@ -254,16 +254,16 @@ export function Review({ userName }: { userName?: string }) {
                       </button>
                     );
                   })}
-                  {/* Add reaction picker */}
-                  <span className="reaction-picker">
+                  {/* Add reaction picker - only on hover */}
+                  <span className="reaction-picker-toggle">
                     {REACTIONS.filter(r => !reactions[r]).map(emoji => (
                       <button key={emoji} onClick={() => onReaction(e.id, emoji)}
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
-                          padding: '2px 3px', opacity: 0.3, transition: 'opacity .15s',
+                          padding: '2px 3px', opacity: 0.5, transition: 'opacity .15s',
                         }}
                         onMouseEnter={ev => (ev.currentTarget.style.opacity = '1')}
-                        onMouseLeave={ev => (ev.currentTarget.style.opacity = '0.3')}>
+                        onMouseLeave={ev => (ev.currentTarget.style.opacity = '0.5')}>
                         {emoji}
                       </button>
                     ))}
@@ -301,7 +301,7 @@ export function Review({ userName }: { userName?: string }) {
             value={val} placeholder={placeholder}
             onChange={e => setInputs(prev => ({ ...prev, [inputKey]: e.target.value }))}
             onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && e.shiftKey) {
                 e.preventDefault();
                 if (val.trim()) { onPost(val); setPreviews(prev => ({ ...prev, [inputKey]: false })); }
               }
@@ -310,7 +310,7 @@ export function Review({ userName }: { userName?: string }) {
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
           <span style={{ fontFamily: 'Share Tech Mono', fontSize: 9, color: 'var(--text3)' }}>
-            Enter: 投稿 / Shift+Enter: 改行 / Markdown対応
+            Shift+Enter: 投稿 / Enter: 改行 / Markdown対応
           </span>
           <button className="comment-send" onClick={() => { if (val.trim()) { onPost(val); setPreviews(prev => ({ ...prev, [inputKey]: false })); } }}
             disabled={!val.trim()}>POST</button>
