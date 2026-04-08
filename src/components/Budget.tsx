@@ -78,8 +78,8 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
   }, [data, save]);
 
   const addItem = useCallback(() => {
-    save({ ...data, items: [...data.items, { id: bid(), category: 'その他', name: '', unitPrice: 0, quantity: 1, currency: 'SGD', actual: 0 }] });
-  }, [data, save]);
+    save({ ...data, items: [...data.items, { id: bid(), category: 'その他', name: '', unitPrice: 0, quantity: 1, currency: displayCurrency, actual: 0 }] });
+  }, [data, save, displayCurrency]);
 
   const removeItem = useCallback((id: string) => {
     save({ ...data, items: data.items.filter(item => item.id !== id) });
