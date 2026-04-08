@@ -371,37 +371,6 @@ export function Review({ userName }: { userName?: string }) {
     );
   }
 
-  // 9-6: Markdown export
-  function exportMarkdown() {
-    let md = '# SG MISSION REVIEW 2026\n\n';
-    DAYS.forEach(day => {
-      md += `## ${day.label} — ${day.desc}\n\n`;
-      (['A', 'B'] as const).forEach(team => {
-        const dt = data.dayTeams[`${day.key}_${team}`];
-        if (!dt) return;
-        md += `### Team ${team}\n\n`;
-        const FIELDS: { key: keyof DayTeamReview; label: string }[] = [
-          { key: 'outcomes', label: '成果' }, { key: 'improvements', label: '改善' },
-          { key: 'sharing', label: '共有' }, { key: 'freeText', label: '自由記入' },
-        ];
-        FIELDS.forEach(f => {
-          const entries = ensureIds(dt[f.key] || []);
-          if (entries.length === 0) return;
-          md += `#### ${f.label}\n\n`;
-          entries.forEach(e => { md += `- ${e.text} *(${e.author})*\n`; });
-          md += '\n';
-        });
-      });
-    });
-    if (data.overall.length > 0) {
-      md += `## Overall\n\n`;
-      ensureIds(data.overall).forEach(e => { md += `- ${e.text} *(${e.author})*\n`; });
-    }
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
-    a.download = 'SG_MISSION_REVIEW.md'; a.click();
-  }
-
   return (
     <div style={{ animation: 'fadeIn .4s ease' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
