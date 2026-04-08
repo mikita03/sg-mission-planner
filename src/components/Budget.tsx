@@ -18,7 +18,18 @@ interface BudgetItem {
   unitPrice: number;
   quantity: number;
   currency: 'SGD' | 'JPY';
-  actual: number; // 9-1: actual spend
+  actual: number;
+}
+
+interface ExpenseEntry {
+  id: string;
+  date: string;
+  category: string;
+  description: string;
+  amount: number;
+  currency: 'SGD' | 'JPY';
+  paidBy: string;
+  createdAt: number;
 }
 
 interface BudgetData {
@@ -349,6 +360,245 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
           <span className="ic" dangerouslySetInnerHTML={{ __html: ic('plus') }} /> ADD ITEM
         </button>
       </div>
+
+      {/* ═══ EXPENSE TRACKER ═══ */}
+      <ExpenseTracker userName={_props.userName} rateJPY={data.rateJPY} displayCurrency={displayCurrency} isMobile={_props.isMobile} />
+    </div>
+  );
+}
+
+/* ═══ Expense Tracker Sub-component ═══ */
+const EXP_STORAGE_KEY = 'sg_mission_expenses';
+const DATE_LABELS = ['Day 0 (出発)', 'Day 1', 'Day 2', 'Day 3', '前泊/その他'];
+const DATE_KEYS = ['d0', 'd1', 'd2', 'd3', 'other'];
+
+function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { userName?: string; rateJPY: number; displayCurrency: 'SGD' | 'JPY'; isMobile?: boolean }) {
+  const [expenses, setExpenses] = useState<ExpenseEntry[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState({ date: 'd1', category: 'タクシー', description: '', amount: '', currency: 'SGD' as 'SGD' | 'JPY', paidBy: userName || '' });
+
+  useEffect(() => {
+    if (isFirebaseConfigured && db) {
+      const unsub = onValue(ref(db, 'expenses'), (snap) => {
+        const val = snap.val();
+        if (val) {
+          const arr: ExpenseEntry[] = Array.isArray(val) ? val : Object.values(val);
+          setExpenses(arr.filter(e => e && e.id));
+          try { localStorage.setItem(EXP_STORAGE_KEY, JSON.stringify(arr)); } catch {}
+        }
+      });
+      return () => unsub();
+    } else {
+      try { const saved = localStorage.getItem(EXP_STORAGE_KEY); if (saved) setExpenses(JSON.parse(saved)); } catch {}
+    }
+  }, []);
+
+  function saveExpenses(next: ExpenseEntry[]) {
+    setExpenses(next);
+    try { localStorage.setItem(EXP_STORAGE_KEY, JSON.stringify(next)); } catch {}
+    if (isFirebaseConfigured && db) set(ref(db, 'expenses'), next);
+  }
+
+  function handleSubmit() {
+    const amt = toNum(form.amount);
+    if (!amt || !form.description.trim()) return;
+    if (editId) {
+      saveExpenses(expenses.map(e => e.id === editId ? { ...e, date: form.date, category: form.category, description: form.description.trim(), amount: amt, currency: form.currency, paidBy: form.paidBy } : e));
+      setEditId(null);
+    } else {
+      const entry: ExpenseEntry = { id: 'exp' + (++_idC).toString(36), date: form.date, category: form.category, description: form.description.trim(), amount: amt, currency: form.currency, paidBy: form.paidBy || userName || '不明', createdAt: Date.now() };
+      saveExpenses([...expenses, entry]);
+    }
+    setForm({ ...form, description: '', amount: '' });
+    setShowForm(false);
+  }
+
+  function startEdit(e: ExpenseEntry) {
+    setForm({ date: e.date, category: e.category, description: e.description, amount: String(e.amount), currency: e.currency, paidBy: e.paidBy });
+    setEditId(e.id);
+    setShowForm(true);
+  }
+
+  function deleteExpense(id: string) { saveExpenses(expenses.filter(e => e.id !== id)); }
+
+  // Convert to SGD for totals
+  function toSGD(amount: number, currency: 'SGD' | 'JPY') {
+    return currency === 'SGD' ? amount : amount / rateJPY;
+  }
+  function displayAmt(sgd: number) {
+    if (displayCurrency === 'JPY') return `¥${Math.round(sgd * rateJPY).toLocaleString()}`;
+    return `S$${sgd.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+  }
+
+  // Per-person totals
+  const personTotals = useMemo(() => {
+    const map: Record<string, number> = {};
+    expenses.forEach(e => {
+      const sgd = toSGD(e.amount, e.currency);
+      map[e.paidBy] = (map[e.paidBy] || 0) + sgd;
+    });
+    return map;
+  }, [expenses, rateJPY]);
+
+  const totalSGD = useMemo(() => expenses.reduce((s, e) => s + toSGD(e.amount, e.currency), 0), [expenses, rateJPY]);
+  const people = Object.keys(personTotals);
+  const avgPerPerson = people.length ? totalSGD / people.length : 0;
+
+  // Settlement
+  const settlements = useMemo(() => {
+    if (people.length < 2) return [];
+    const diffs = people.map(p => ({ name: p, diff: personTotals[p] - avgPerPerson }));
+    const creditors = diffs.filter(d => d.diff > 0.5).sort((a, b) => b.diff - a.diff);
+    const debtors = diffs.filter(d => d.diff < -0.5).sort((a, b) => a.diff - b.diff);
+    const result: { from: string; to: string; amount: number }[] = [];
+    let ci = 0, di = 0;
+    const cr = creditors.map(c => ({ ...c }));
+    const dr = debtors.map(d => ({ ...d, diff: -d.diff }));
+    while (ci < cr.length && di < dr.length) {
+      const amt = Math.min(cr[ci].diff, dr[di].diff);
+      if (amt > 0.5) result.push({ from: dr[di].name, to: cr[ci].name, amount: amt });
+      cr[ci].diff -= amt;
+      dr[di].diff -= amt;
+      if (cr[ci].diff < 0.5) ci++;
+      if (dr[di].diff < 0.5) di++;
+    }
+    return result;
+  }, [personTotals, avgPerPerson]);
+
+  const inputStyle: React.CSSProperties = { padding: '8px 10px', background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'Rajdhani', fontSize: 14, width: '100%' };
+
+  let _idC = Date.now();
+
+  return (
+    <div style={{ marginTop: 28, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <h3 style={{ fontFamily: 'Orbitron, monospace', fontSize: 14, color: 'var(--neon-amber)', letterSpacing: '.1em', margin: 0 }}>
+          💳 EXPENSE LOG
+        </h3>
+        <button className="btn btn-primary" style={{ fontSize: 12, padding: '6px 14px' }} onClick={() => { setShowForm(!showForm); setEditId(null); setForm({ date: 'd1', category: 'タクシー', description: '', amount: '', currency: 'SGD', paidBy: userName || '' }); }}>
+          {showForm ? 'CLOSE' : '+ ADD'}
+        </button>
+      </div>
+
+      {/* Add/Edit form */}
+      {showForm && (
+        <div style={{ padding: 16, background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 'var(--radius)', marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div>
+              <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 2, display: 'block' }}>日付</label>
+              <select value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} style={{ ...inputStyle }}>
+                {DATE_KEYS.map((k, i) => <option key={k} value={k}>{DATE_LABELS[i]}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 2, display: 'block' }}>カテゴリ</label>
+              <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} style={{ ...inputStyle }}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 2, display: 'block' }}>内容</label>
+              <input style={inputStyle} value={form.description} placeholder="空港→ホテル Grab" onChange={e => setForm({ ...form, description: e.target.value })} />
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 2, display: 'block' }}>金額</label>
+                <input style={inputStyle} type="text" inputMode="decimal" value={form.amount} placeholder="0" onChange={e => setForm({ ...form, amount: e.target.value })} />
+              </div>
+              <div style={{ width: 70 }}>
+                <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 2, display: 'block' }}>通貨</label>
+                <select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value as 'SGD' | 'JPY' })} style={{ ...inputStyle }}>
+                  <option value="SGD">SGD</option>
+                  <option value="JPY">JPY</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 2, display: 'block' }}>支払者</label>
+              <input style={inputStyle} value={form.paidBy} placeholder="名前" onChange={e => setForm({ ...form, paidBy: e.target.value })} />
+            </div>
+          </div>
+          <button className="btn btn-primary" style={{ width: '100%', padding: 10, fontSize: 13 }} onClick={handleSubmit} disabled={!form.description.trim() || !toNum(form.amount)}>
+            {editId ? 'UPDATE' : 'REGISTER'}
+          </button>
+        </div>
+      )}
+
+      {/* Expense list */}
+      {expenses.length > 0 && (
+        <>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="budget-table" style={{ width: '100%', fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th style={{ width: 50 }}>日</th>
+                  <th>カテゴリ</th>
+                  <th>内容</th>
+                  <th style={{ textAlign: 'right' }}>金額</th>
+                  <th>支払者</th>
+                  <th style={{ width: 50 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {expenses.sort((a, b) => DATE_KEYS.indexOf(a.date) - DATE_KEYS.indexOf(b.date) || a.createdAt - b.createdAt).map(e => (
+                  <tr key={e.id}>
+                    <td style={{ fontFamily: 'Share Tech Mono', fontSize: 11, color: 'var(--text3)' }}>{e.date.toUpperCase()}</td>
+                    <td style={{ fontSize: 11 }}>{e.category}</td>
+                    <td>{e.description}</td>
+                    <td style={{ textAlign: 'right', fontFamily: 'Share Tech Mono', whiteSpace: 'nowrap' }}>
+                      {e.currency === 'SGD' ? `S$${e.amount}` : `¥${e.amount.toLocaleString()}`}
+                    </td>
+                    <td style={{ color: 'var(--text2)' }}>{e.paidBy}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 11, padding: 2 }} onClick={() => startEdit(e)}>✏️</button>
+                        <button style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 11, padding: 2 }} onClick={() => deleteExpense(e.id)}>🗑</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Per-person summary */}
+          <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${Math.min(people.length, 4)}, 1fr)`, gap: 10 }}>
+            {people.map(p => (
+              <div key={p} style={{ padding: 12, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'Share Tech Mono', fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>{p}</div>
+                <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 16, color: 'var(--text)' }}>{displayAmt(personTotals[p])}</div>
+                <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: personTotals[p] > avgPerPerson ? 'var(--neon-red)' : 'var(--neon-emerald)', marginTop: 2 }}>
+                  {personTotals[p] > avgPerPerson ? `+${displayAmt(personTotals[p] - avgPerPerson)}` : `-${displayAmt(avgPerPerson - personTotals[p])}`}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Settlement */}
+          {settlements.length > 0 && (
+            <div style={{ marginTop: 14, padding: 12, background: 'rgba(0,229,255,.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+              <div style={{ fontFamily: 'Share Tech Mono', fontSize: 11, color: 'var(--neon-cyan)', marginBottom: 8, letterSpacing: '.06em' }}>💸 SETTLEMENT</div>
+              {settlements.map((s, i) => (
+                <div key={i} style={{ fontFamily: 'Rajdhani', fontSize: 14, color: 'var(--text)', marginBottom: 4 }}>
+                  {s.from} → {s.to}: <strong>{displayAmt(s.amount)}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Total */}
+          <div style={{ marginTop: 12, textAlign: 'right', fontFamily: 'Orbitron, monospace', fontSize: 14, color: 'var(--neon-amber)' }}>
+            TOTAL EXPENSES: {displayAmt(totalSGD)}
+          </div>
+        </>
+      )}
+
+      {expenses.length === 0 && !showForm && (
+        <div style={{ fontFamily: 'Share Tech Mono', fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '20px 0' }}>
+          No expenses recorded yet
+        </div>
+      )}
     </div>
   );
 }
