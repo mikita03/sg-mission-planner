@@ -358,16 +358,16 @@ export default function App() {
             </div>
 
             {/* Body */}
-            <div style={{ padding: '24px 28px 20px' }}>
+            <div style={{ padding: '24px 28px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               {pendingUser && (
-                <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 16, padding: '4px 10px', background: 'var(--bg)', borderRadius: 20, display: 'inline-block' }}>
+                <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 16, padding: '4px 10px', background: 'var(--bg)', borderRadius: 20 }}>
                   {pendingUser.email}
                 </div>
               )}
 
               {/* Image with scan effect */}
-              <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
-                <img src={authAssetImg} alt="Identify" style={{ width: 150, height: 150, borderRadius: 12, border: '2px solid var(--neon-cyan)', objectFit: 'cover', boxShadow: '0 0 20px rgba(0,229,255,.2)' }} />
+              <div style={{ position: 'relative', marginBottom: 16 }}>
+                <img src={authAssetImg} alt="Identify" style={{ width: 150, height: 150, borderRadius: 12, border: '2px solid var(--neon-cyan)', objectFit: 'cover', boxShadow: '0 0 20px rgba(0,229,255,.2)', display: 'block' }} />
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 12, background: 'linear-gradient(180deg, transparent 0%, transparent 45%, rgba(0,229,255,.08) 50%, transparent 55%, transparent 100%)', backgroundSize: '100% 200%', animation: 'scanMove 3s linear infinite' }} />
                 <div style={{ position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%)', fontFamily: 'Share Tech Mono', fontSize: 9, color: 'var(--neon-cyan)', background: 'var(--bg3)', padding: '2px 8px', borderRadius: 4, border: '1px solid var(--border2)', letterSpacing: '.1em' }}>TARGET</div>
               </div>
@@ -381,7 +381,9 @@ export default function App() {
 
               <input type="text" value={passphraseInput} placeholder="Enter name..."
                 onChange={e => { setPassphraseInput(e.target.value); }}
-                onKeyDown={e => { if (e.key === 'Enter' && passphraseInput.trim()) submitPassphrase(passphraseInput.trim()); }}
+                onCompositionStart={() => { (window as any).__imeComposing = true; }}
+                onCompositionEnd={() => { (window as any).__imeComposing = false; }}
+                onKeyDown={e => { if (e.key === 'Enter' && !(window as any).__imeComposing && passphraseInput.trim()) submitPassphrase(passphraseInput.trim()); }}
                 style={{ width: '100%', padding: '14px 16px', background: 'var(--bg)', border: `1px solid ${passphraseError ? 'var(--neon-red)' : 'var(--neon-cyan)'}`, borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'Share Tech Mono', fontSize: 16, textAlign: 'center', marginBottom: 10, boxShadow: passphraseError ? '0 0 10px rgba(239,68,68,.2)' : '0 0 10px rgba(0,229,255,.1)', outline: 'none', letterSpacing: '.05em' }}
                 autoFocus />
               {passphraseError && (
