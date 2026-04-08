@@ -823,3 +823,24 @@ body{
 
 /* 8-4: Countup animation helper */
 .countup{transition:opacity .3s;display:inline-block}
+
+/* ═══ 9-7: Light Mode ═══ */
+body.light-mode{
+  --bg:#f0f2f5;--bg2:#ffffff;--bg3:#f7f8fa;--bg4:#e8ecf0;
+  --text:#1a1a2e;--text2:#4a5568;--text3:#9ca3af;
+  --border:#d1d5db;--border2:#c0c8d4;
+  --neon-cyan:#0891b2;--neon-blue:#2563eb;--neon-purple:#7c3aed;
+  --neon-amber:#d97706;--neon-red:#dc2626;--neon-emerald:#059669;
+  background:#f0f2f5!important;
+  background-image:none!important;
+}
+body.light-mode .particle-canvas{opacity:.15}
+body.light-mode .boot-overlay{background:#f0f2f5}
+body.light-mode .boot-content{color:#1a1a2e}
+body.light-mode .covert-overlay{background:radial-gradient(ellipse at center,rgba(240,242,245,.97),rgba(255,255,255,.99))!important}
+body.light-mode .drawer::before{display:none}
+body.light-mode .bk{backdrop-filter:none}
+body.light-mode .modal-panel{box-shadow:0 8px 30px rgba(0,0,0,.15)}
+
+/* ═══ 9-8: Bulk selected card ═══ */
+.kanban-card.bulk-selected{background:rgba(0,229,255,.08)!important;border-color:var(--neon-cyan)!important;box-shadow:0 0 8px rgba(0,229,255,.15)}

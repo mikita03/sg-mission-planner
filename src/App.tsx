@@ -37,6 +37,7 @@ export default function App() {
   const [mobileDay, setMobileDay] = useState(0);
   const [clipboard, setClipboard] = useState<Block | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [lightMode, setLightMode] = useState(false);
 
   // Clocks
   const [sgtTime, setSgtTime] = useState('--:--:--');
@@ -408,6 +409,15 @@ export default function App() {
             </button>
             <button className="btn" onClick={() => setShowCovert(true)}>
               <span className="ic" dangerouslySetInnerHTML={{ __html: ic('download') }} /> 工程表PDF
+            </button>
+            <button className="btn" onClick={() => {
+              const next = !lightMode;
+              setLightMode(next);
+              document.body.classList.toggle('light-mode', next);
+              triggerGlitch();
+              showToast(next ? 'LIGHT MODE' : 'DARK MODE');
+            }} style={{ padding: '6px 10px' }}>
+              {lightMode ? '🌙' : '☀️'}
             </button>
           </div>
         </div>

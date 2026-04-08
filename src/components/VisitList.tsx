@@ -64,7 +64,8 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
   const [tagInput, setTagInput] = useState('');
   const [tagPresets, setTagPresets] = useState<string[]>(loadTags);
   const [searchQuery, setSearchQuery] = useState('');
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set()); // 9-8
+  const [selectMode, setSelectMode] = useState(false); // 9-8: selection mode
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const dragRef = useRef<{ id: string; fromStatus: string } | null>(null);
 
   // Firebase sync
@@ -205,9 +206,15 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
         <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 16, color: 'var(--neon-cyan)', letterSpacing: '.08em' }}>
           VISIT CANDIDATES
         </div>
-        <button className="btn btn-primary" onClick={addCandidate}>
-          <span className="ic" dangerouslySetInnerHTML={{ __html: ic('plus') }} /> ADD
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className={`btn${selectMode ? ' btn-active' : ''}`} style={{ fontSize: 11, padding: '5px 12px', background: selectMode ? 'rgba(0,229,255,.15)' : undefined, borderColor: selectMode ? 'var(--neon-cyan)' : undefined }}
+            onClick={() => { setSelectMode(!selectMode); if (selectMode) setCheckedIds(new Set()); }}>
+            {selectMode ? `✓ SELECT (${checkedIds.size})` : 'SELECT'}
+          </button>
+          <button className="btn btn-primary" onClick={addCandidate}>
+            <span className="ic" dangerouslySetInnerHTML={{ __html: ic('plus') }} /> ADD
+          </button>
+        </div>
       </div>
 
       {/* 7-4: Search */}
@@ -222,7 +229,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
       </div>
 
       {/* 9-8: Bulk Action Bar */}
-      {checkedIds.size > 0 && (
+      {selectMode && checkedIds.size > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '8px 12px', background: 'linear-gradient(135deg,rgba(0,229,255,.08),rgba(0,229,255,.03))', border: '1px solid var(--neon-cyan)', borderRadius: 'var(--radius)', fontFamily: 'Share Tech Mono', fontSize: 12, color: 'var(--neon-cyan)', animation: 'fadeIn .2s ease' }}>
           <span>{checkedIds.size} 件選択</span>
           {COLUMNS.map(col => (
@@ -254,17 +261,19 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                   const p = PRIORITY_OPTIONS.find(pp => pp.value === c.priority) || PRIORITY_OPTIONS[1];
                   return (
                     <div key={c.id}
-                      className={`kanban-card${selectedId === c.id ? ' selected' : ''}`}
-                      draggable
-                      onDragStart={e => onCardDragStart(e, c.id, c.status)}
+                      className={`kanban-card${selectedId === c.id ? ' selected' : ''}${selectMode && checkedIds.has(c.id) ? ' bulk-selected' : ''}`}
+                      draggable={!selectMode}
+                      onDragStart={e => selectMode ? e.preventDefault() : onCardDragStart(e, c.id, c.status)}
                       onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
                       onDragLeave={e => e.currentTarget.classList.remove('drag-over')}
                       onDrop={e => { e.currentTarget.classList.remove('drag-over'); onCardDrop(e, c.id, col.key); }}
-                      onClick={() => { setSelectedId(selectedId === c.id ? null : c.id); setEditMode(false); }}>
+                      onClick={() => { if (selectMode) { toggleCheck(c.id); } else { setSelectedId(selectedId === c.id ? null : c.id); setEditMode(false); } }}>
                       <div className="kanban-card-company">
-                        <input type="checkbox" checked={checkedIds.has(c.id)} onChange={() => toggleCheck(c.id)}
-                          onClick={e => e.stopPropagation()}
-                          style={{ marginRight: 6, accentColor: 'var(--neon-cyan)', cursor: 'pointer' }} />
+                        {selectMode && (
+                          <span style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${checkedIds.has(c.id) ? 'var(--neon-cyan)' : 'var(--border2)'}`, background: checkedIds.has(c.id) ? 'rgba(0,229,255,.2)' : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: 6, flexShrink: 0, fontSize: 11, color: 'var(--neon-cyan)', transition: 'all .15s' }}>
+                            {checkedIds.has(c.id) && '✓'}
+                          </span>
+                        )}
                         <span className="pri-dot" style={{ background: p.color }} />
                         {c.company || '（未入力）'}
                       </div>

@@ -41,9 +41,10 @@ function defaultReview(): ReviewData {
   return { dayTeams, overall: [] };
 }
 
-function ensureIds(entries: any[]): ReviewEntry[] {
-  if (!Array.isArray(entries)) return [];
-  return entries.map(e => ({ ...e, id: e.id || rid(), reactions: e.reactions || {} }));
+function ensureIds(entries: any): ReviewEntry[] {
+  // Firebase returns arrays as objects with numeric keys
+  const arr = Array.isArray(entries) ? entries : entries && typeof entries === 'object' ? Object.values(entries) : [];
+  return arr.filter(Boolean).map((e: any) => ({ ...e, id: e.id || rid(), reactions: e.reactions || {}, pinned: e.pinned || false }));
 }
 
 export function Review({ userName }: { userName?: string }) {
