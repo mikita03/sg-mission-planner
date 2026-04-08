@@ -243,8 +243,7 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
             <tr>
               <th style={{ width: 130, fontSize: 11 }}>CATEGORY</th>
               <th style={{ fontSize: 11 }}>ITEM</th>
-              <th style={{ width: 110, fontSize: 11 }}>UNIT PRICE</th>
-              <th style={{ width: 65, fontSize: 11 }}>CUR.</th>
+              <th style={{ width: 140, fontSize: 11 }}>UNIT PRICE</th>
               <th style={{ width: 65, fontSize: 11 }}>QTY</th>
               <th style={{ width: 120, fontSize: 11 }}>SUBTOTAL</th>
               <th style={{ width: 100, fontSize: 11 }}>ACTUAL</th>
@@ -265,14 +264,14 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
                     placeholder="項目名" style={{ ...inputStyle, width: '100%' }} />
                 </td>
                 <td>
-                  <input type="text" inputMode="decimal" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', toNum(e.target.value))}
-                    style={{ ...inputStyle, width: '100%', textAlign: 'right' as const }} />
-                </td>
-                <td>
-                  <select value={item.currency} onChange={e => updateItem(item.id, 'currency', e.target.value)}
-                    style={{ ...inputStyle, width: '100%', fontSize: 13 }}>
-                    <option value="SGD">SGD</option><option value="JPY">JPY</option>
-                  </select>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <input type="text" inputMode="decimal" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', toNum(e.target.value))}
+                      style={{ ...inputStyle, flex: 1, textAlign: 'right' as const }} />
+                    <button onClick={() => updateItem(item.id, 'currency', item.currency === 'SGD' ? 'JPY' : 'SGD')}
+                      style={{ padding: '4px 6px', fontSize: 10, fontFamily: 'Share Tech Mono', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 4, color: item.currency === 'JPY' ? 'var(--neon-amber)' : 'var(--neon-cyan)', cursor: 'pointer', flexShrink: 0, minWidth: 32, textAlign: 'center' }}>
+                      {item.currency}
+                    </button>
+                  </div>
                 </td>
                 <td>
                   <input type="text" inputMode="decimal" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', toNum(e.target.value))}
@@ -299,7 +298,7 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={5} style={{ textAlign: 'right', fontWeight: 700, fontFamily: 'Orbitron, monospace', fontSize: 13, color: 'var(--text2)', letterSpacing: '.08em', padding: '12px 10px' }}>
+              <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700, fontFamily: 'Orbitron, monospace', fontSize: 13, color: 'var(--text2)', letterSpacing: '.08em', padding: '12px 10px' }}>
                 TOTAL
               </td>
               <td style={{ fontFamily: 'Orbitron, monospace', fontSize: 20, fontWeight: 700, color: 'var(--neon-cyan)', textAlign: 'right', textShadow: '0 0 8px #00e5ff30', padding: '12px 10px' }}>
