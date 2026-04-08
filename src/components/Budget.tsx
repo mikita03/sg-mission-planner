@@ -4,7 +4,12 @@ import { db, isFirebaseConfigured } from '../firebase';
 import { ic } from '../constants/categories';
 import { triggerGlitch } from './Shared';
 
-const BUDGET_LIMIT_SGD = 8000; // overage threshold
+/** Convert full-width numbers to half-width and parse */
+function toNum(v: string): number {
+  const hw = v.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[^\d.-]/g, '');
+  const n = Number(hw);
+  return isNaN(n) ? 0 : n;
+}
 
 interface BudgetItem {
   id: string;
@@ -18,9 +23,11 @@ interface BudgetItem {
 interface BudgetData {
   items: BudgetItem[];
   rateJPY: number;
+  budgetLimit: number;
 }
 
 const DEFAULT_RATE = 115;
+const DEFAULT_LIMIT = 8000;
 const CATEGORIES = ['フライト', 'MRT/交通', 'タクシー', '宿泊', 'ランチ', 'ディナー', '会議室', '通信費', 'その他'];
 const STORAGE_KEY = 'sg_mission_budget';
 
@@ -39,7 +46,7 @@ function defaultItems(): BudgetItem[] {
 }
 
 export function Budget(_props: { userName?: string; isMobile?: boolean }) {
-  const [data, setData] = useState<BudgetData>({ items: defaultItems(), rateJPY: DEFAULT_RATE });
+  const [data, setData] = useState<BudgetData>({ items: defaultItems(), rateJPY: DEFAULT_RATE, budgetLimit: DEFAULT_LIMIT });
   const [loaded, setLoaded] = useState(true);
   const [displayCurrency, setDisplayCurrency] = useState<'SGD' | 'JPY'>('SGD');
 
@@ -49,7 +56,7 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
       const unsub = onValue(budgetRef, (snap) => {
         const val = snap.val();
         if (val && val.items) { setData(val); try { localStorage.setItem(STORAGE_KEY, JSON.stringify(val)); } catch {} }
-        else { const d = { items: defaultItems(), rateJPY: DEFAULT_RATE }; set(budgetRef, d); setData(d); }
+        else { const d = { items: defaultItems(), rateJPY: DEFAULT_RATE, budgetLimit: DEFAULT_LIMIT }; set(budgetRef, d); setData(d); }
         setLoaded(true);
       });
       return () => unsub();
@@ -84,7 +91,7 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
   }, [data.rateJPY]);
 
   const total = useMemo(() => data.items.reduce((s, item) => s + toSGD(item), 0), [data.items, toSGD]);
-  const isOverBudget = total > BUDGET_LIMIT_SGD;
+  const isOverBudget = data.budgetLimit > 0 && total > data.budgetLimit;
 
   // 8-4: Countup animation
   const [displayTotal, setDisplayTotal] = useState(0);
@@ -130,11 +137,15 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
         <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 16, color: 'var(--neon-cyan)', letterSpacing: '.08em' }}>
           BUDGET PLANNER
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 12, color: 'var(--text3)' }}>1 SGD =</span>
-          <input type="number" value={data.rateJPY} onChange={e => setRate(Number(e.target.value))}
+          <input type="text" inputMode="decimal" value={data.rateJPY} onChange={e => setRate(toNum(e.target.value))}
             style={{ ...inputStyle, width: 70, textAlign: 'center' as const, fontSize: 13 }} />
           <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 12, color: 'var(--text3)' }}>JPY</span>
+          <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 12, color: 'var(--text3)', marginLeft: 8 }}>上限</span>
+          <input type="text" inputMode="decimal" value={data.budgetLimit} onChange={e => save({ ...data, budgetLimit: toNum(e.target.value) })}
+            style={{ ...inputStyle, width: 80, textAlign: 'center' as const, fontSize: 13 }} />
+          <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 12, color: 'var(--text3)' }}>SGD</span>
           <button className="btn" style={{ padding: '6px 14px', fontSize: 13 }}
             onClick={() => { setDisplayCurrency(prev => prev === 'SGD' ? 'JPY' : 'SGD'); triggerGlitch(); }}>
             {displayCurrency}
@@ -146,7 +157,7 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
       {isOverBudget && (
         <div className="budget-alert">
           <span style={{ fontSize: 16 }}>⚠</span>
-          予算上限 {displayAmount(BUDGET_LIMIT_SGD)} を超過しています（{displayAmount(total - BUDGET_LIMIT_SGD)} オーバー）
+          予算上限 {displayAmount(data.budgetLimit)} を超過しています（{displayAmount(total - data.budgetLimit)} オーバー）
         </div>
       )}
 
@@ -215,7 +226,7 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
                     placeholder="項目名" style={{ ...inputStyle, width: '100%' }} />
                 </td>
                 <td>
-                  <input type="number" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', Number(e.target.value))}
+                  <input type="text" inputMode="decimal" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', toNum(e.target.value))}
                     style={{ ...inputStyle, width: '100%', textAlign: 'right' as const }} />
                 </td>
                 <td>
@@ -225,7 +236,7 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
                   </select>
                 </td>
                 <td>
-                  <input type="number" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', Number(e.target.value))}
+                  <input type="text" inputMode="decimal" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', toNum(e.target.value))}
                     style={{ ...inputStyle, width: '100%', textAlign: 'right' as const }} />
                 </td>
                 <td style={{ fontFamily: 'Orbitron, monospace', fontSize: 15, color: 'var(--neon-cyan)', textAlign: 'right', textShadow: '0 0 4px #00e5ff20', letterSpacing: '.03em' }}>

@@ -782,8 +782,9 @@ body{
 /* ═══ Phase 8: Visual & Effects ═══ */
 
 /* 8-1: Block connection indicator (move → visit chain) */
-.bk.chain-start::after{content:'▼';position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--neon-cyan);opacity:.6;z-index:5;text-shadow:0 0 4px var(--neon-cyan)}
-.bk.chain-end::before{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:var(--neon-cyan);opacity:.5;z-index:5;box-shadow:0 0 6px var(--neon-cyan)}
+.bk.chain-start{border-bottom:2px solid var(--neon-cyan)!important;border-bottom-left-radius:0!important;border-bottom-right-radius:0!important}
+.bk.chain-start::after{content:'';position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--neon-cyan);z-index:5;filter:drop-shadow(0 0 4px rgba(0,229,255,.6))}
+.bk.chain-end{border-top:2px solid var(--neon-cyan)!important;border-top-left-radius:0!important;border-top-right-radius:0!important}
 
 /* 8-2: Kanban confirmed card checkmark */
 .kanban-card-schedule::before{content:'✓ ';color:var(--neon-emerald);font-weight:700;animation:checkPop .4s cubic-bezier(.34,1.56,.64,1)}
