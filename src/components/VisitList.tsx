@@ -284,7 +284,10 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                           {c.tags.map(t => <span key={t}>{t}</span>)}
                         </div>
                       )}
-                      {c.location && <div className="kanban-card-info"><span>📍 {c.location}</span></div>}
+                      {c.location && <div className="kanban-card-info">
+                        <span>📍 {c.location}</span>
+                        {getMapsLink(c.location, c.mapUrl) && <a href={getMapsLink(c.location, c.mapUrl)} target="_blank" rel="noopener noreferrer" className="maps-link" style={{ marginLeft: 4, fontSize: 10 }} onClick={e => e.stopPropagation()}>MAP</a>}
+                      </div>}
                       {c.status === 'confirmed' && c.day && c.startTime && (
                         <div className="kanban-card-schedule">
                           {DAYS[parseInt(c.day[1])]?.label.split(' ')[0]} T{c.team} {c.startTime}
@@ -520,7 +523,10 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                       <td>{v.team}</td>
                       <td style={{ fontFamily: 'Share Tech Mono', fontSize: 12 }}>{v.start}–{m2t(t2m(v.start) + v.dur)}</td>
                       <td style={{ fontWeight: 600, color: 'var(--neon-emerald)' }}>{v.detail || v.label || '—'}</td>
-                      <td style={{ color: 'var(--text2)' }}>{v.location || '—'}</td>
+                      <td style={{ color: 'var(--text2)' }}>
+                        {v.location || '—'}
+                        {v.location && getMapsLink(v.location, v.mapUrl) && <a href={getMapsLink(v.location, v.mapUrl)} target="_blank" rel="noopener noreferrer" className="maps-link" style={{ marginLeft: 4, fontSize: 10 }} onClick={e => e.stopPropagation()}>MAP</a>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
