@@ -5,6 +5,7 @@ import { DAYS, ic } from '../constants/categories';
 import { MdText } from './MarkdownField';
 
 interface ReviewEntry {
+  id: string;
   text: string;
   author: string;
   timestamp: number;
@@ -18,11 +19,13 @@ interface DayTeamReview {
 }
 
 interface ReviewData {
-  dayTeams: Record<string, DayTeamReview>;  // key: "d0_A", "d0_B" etc.
+  dayTeams: Record<string, DayTeamReview>;
   overall: ReviewEntry[];
 }
 
 const STORAGE_KEY = 'sg_mission_review_v2';
+let _rc = Date.now();
+function rid() { return 'rv' + (++_rc).toString(36); }
 
 function emptyDayTeamReview(): DayTeamReview {
   return { outcomes: [], improvements: [], sharing: [], freeText: [] };
@@ -30,11 +33,14 @@ function emptyDayTeamReview(): DayTeamReview {
 
 function defaultReview(): ReviewData {
   const dayTeams: Record<string, DayTeamReview> = {};
-  DAYS.forEach(d => {
-    dayTeams[`${d.key}_A`] = emptyDayTeamReview();
-    dayTeams[`${d.key}_B`] = emptyDayTeamReview();
-  });
+  DAYS.forEach(d => { dayTeams[`${d.key}_A`] = emptyDayTeamReview(); dayTeams[`${d.key}_B`] = emptyDayTeamReview(); });
   return { dayTeams, overall: [] };
+}
+
+// Ensure entries have ids (migration from old data)
+function ensureIds(entries: any[]): ReviewEntry[] {
+  if (!Array.isArray(entries)) return [];
+  return entries.map(e => ({ ...e, id: e.id || rid() }));
 }
 
 export function Review({ userName }: { userName?: string }) {
@@ -42,6 +48,7 @@ export function Review({ userName }: { userName?: string }) {
   const [expandedDay, setExpandedDay] = useState<string | null>('d0');
   const [activeTeamTab, setActiveTeamTab] = useState<'A' | 'B'>('A');
   const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [previews, setPreviews] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (isFirebaseConfigured && db) {
@@ -54,14 +61,14 @@ export function Review({ userName }: { userName?: string }) {
             if (merged.dayTeams[k]) {
               const src = val.dayTeams[k];
               merged.dayTeams[k] = {
-                outcomes: Array.isArray(src.outcomes) ? src.outcomes : [],
-                improvements: Array.isArray(src.improvements) ? src.improvements : [],
-                sharing: Array.isArray(src.sharing) ? src.sharing : [],
-                freeText: Array.isArray(src.freeText) ? src.freeText : [],
+                outcomes: ensureIds(src.outcomes),
+                improvements: ensureIds(src.improvements),
+                sharing: ensureIds(src.sharing),
+                freeText: ensureIds(src.freeText),
               };
             }
           });
-          merged.overall = Array.isArray(val.overall) ? val.overall : [];
+          merged.overall = ensureIds(val.overall);
           setData(merged);
           try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
         } else {
@@ -75,41 +82,43 @@ export function Review({ userName }: { userName?: string }) {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) setData(JSON.parse(saved));
-      } catch { /* */ }
+      } catch {}
     }
   }, []);
 
   const save = useCallback((newData: ReviewData) => {
     setData(newData);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newData)); } catch { /* */ }
-    if (isFirebaseConfigured && db) {
-      set(ref(db, 'review_v2'), newData);
-    }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newData)); } catch {}
+    if (isFirebaseConfigured && db) set(ref(db, 'review_v2'), newData);
   }, []);
 
   const addEntry = useCallback((dayTeamKey: string, field: keyof DayTeamReview, text: string) => {
     if (!text.trim()) return;
-    const entry: ReviewEntry = { text: text.trim(), author: userName || 'Anonymous', timestamp: Date.now() };
+    const entry: ReviewEntry = { id: rid(), text: text.trim(), author: userName || 'Anonymous', timestamp: Date.now() };
     const dt = data.dayTeams[dayTeamKey] || emptyDayTeamReview();
-    save({
-      ...data,
-      dayTeams: {
-        ...data.dayTeams,
-        [dayTeamKey]: { ...dt, [field]: [...dt[field], entry] },
-      },
-    });
+    save({ ...data, dayTeams: { ...data.dayTeams, [dayTeamKey]: { ...dt, [field]: [...dt[field], entry] } } });
     setInputs(prev => ({ ...prev, [`${dayTeamKey}_${field}`]: '' }));
   }, [data, save, userName]);
 
+  const deleteEntry = useCallback((dayTeamKey: string, field: keyof DayTeamReview, entryId: string) => {
+    const dt = data.dayTeams[dayTeamKey] || emptyDayTeamReview();
+    const filtered = (dt[field] || []).filter((e: ReviewEntry) => e.id !== entryId);
+    save({ ...data, dayTeams: { ...data.dayTeams, [dayTeamKey]: { ...dt, [field]: filtered } } });
+  }, [data, save]);
+
   const addOverall = useCallback((text: string) => {
     if (!text.trim()) return;
-    const entry: ReviewEntry = { text: text.trim(), author: userName || 'Anonymous', timestamp: Date.now() };
+    const entry: ReviewEntry = { id: rid(), text: text.trim(), author: userName || 'Anonymous', timestamp: Date.now() };
     save({ ...data, overall: [...data.overall, entry] });
     setInputs(prev => ({ ...prev, overall: '' }));
   }, [data, save, userName]);
 
+  const deleteOverall = useCallback((entryId: string) => {
+    save({ ...data, overall: data.overall.filter(e => e.id !== entryId) });
+  }, [data, save]);
+
   const FIELDS: { key: keyof DayTeamReview; label: string; placeholder: string; icon: string }[] = [
-    { key: 'outcomes', label: '成果・所感', placeholder: '訪問先での成果、得られた情報、印象など', icon: 'target' },
+    { key: 'outcomes', label: '成果・所感', placeholder: '訪問先での成果、得られた情報、印象など\nMarkdown記法が使えます（**太字**, - リスト）', icon: 'target' },
     { key: 'improvements', label: '改善点', placeholder: '次回への申し送り、改善すべきこと', icon: 'edit' },
     { key: 'sharing', label: 'チーム共有', placeholder: 'チーム全体に共有すべきこと', icon: 'sync' },
     { key: 'freeText', label: '自由メモ', placeholder: 'その他メモ', icon: 'note' },
@@ -121,12 +130,12 @@ export function Review({ userName }: { userName?: string }) {
     return [dt.outcomes, dt.improvements, dt.sharing, dt.freeText].filter(a => Array.isArray(a) && a.length > 0).length;
   }
 
-  function renderEntries(entries: ReviewEntry[]) {
+  function renderEntries(entries: ReviewEntry[], onDelete: (id: string) => void, borderColor = 'var(--neon-cyan)') {
     if (entries.length === 0) return null;
     return (
       <div style={{ marginBottom: 8 }}>
-        {entries.map((e, i) => (
-          <div key={i} className="comment-item" style={{ borderLeftColor: 'var(--neon-cyan)' }}>
+        {entries.map(e => (
+          <div key={e.id || e.timestamp} className="comment-item" style={{ borderLeftColor: borderColor, position: 'relative', paddingRight: 28 }}>
             <div className="comment-author">
               <span>{e.author}</span>
               <span className="comment-time">
@@ -134,8 +143,62 @@ export function Review({ userName }: { userName?: string }) {
               </span>
             </div>
             <div className="comment-text"><MdText text={e.text} /></div>
+            <button
+              onClick={() => onDelete(e.id)}
+              style={{
+                position: 'absolute', top: 6, right: 6, background: 'none', border: 'none',
+                color: 'var(--text3)', cursor: 'pointer', fontSize: 12, padding: '2px 4px',
+                opacity: 0.4, transition: 'opacity .15s',
+              }}
+              onMouseEnter={ev => (ev.currentTarget.style.opacity = '1')}
+              onMouseLeave={ev => (ev.currentTarget.style.opacity = '0.4')}
+              title="削除"
+            >✕</button>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  function renderInput(inputKey: string, placeholder: string, onPost: (text: string) => void) {
+    const val = inputs[inputKey] || '';
+    const showPreview = previews[inputKey] || false;
+
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <button className="md-toggle"
+            onClick={() => setPreviews(prev => ({ ...prev, [inputKey]: !showPreview }))}>
+            {showPreview ? '✎ Edit' : '▣ Preview'}
+          </button>
+        </div>
+        {showPreview ? (
+          <div className="md-preview" style={{ minHeight: 50, marginBottom: 6 }}
+            onClick={() => setPreviews(prev => ({ ...prev, [inputKey]: false }))}>
+            {val ? <MdText text={val} /> : <span className="md-empty">{placeholder}</span>}
+          </div>
+        ) : (
+          <textarea
+            className="comment-input"
+            style={{ width: '100%', minHeight: 50, resize: 'vertical', fontFamily: 'Rajdhani, sans-serif', fontSize: 13, display: 'block' }}
+            value={val}
+            placeholder={placeholder}
+            onChange={e => setInputs(prev => ({ ...prev, [inputKey]: e.target.value }))}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (val.trim()) { onPost(val); setPreviews(prev => ({ ...prev, [inputKey]: false })); }
+              }
+            }}
+          />
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+          <span style={{ fontFamily: 'Share Tech Mono', fontSize: 9, color: 'var(--text3)' }}>
+            Enter: 投稿 / Shift+Enter: 改行 / Markdown対応
+          </span>
+          <button className="comment-send" onClick={() => { if (val.trim()) { onPost(val); setPreviews(prev => ({ ...prev, [inputKey]: false })); } }}
+            disabled={!val.trim()}>POST</button>
+        </div>
       </div>
     );
   }
@@ -164,7 +227,6 @@ export function Review({ userName }: { userName?: string }) {
             background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
             marginBottom: 8, overflow: 'hidden',
           }}>
-            {/* Day Header */}
             <div className="review-day-header" onClick={() => setExpandedDay(isExpanded ? null : day.key)}
               style={{
                 padding: '12px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -186,12 +248,11 @@ export function Review({ userName }: { userName?: string }) {
               </div>
             </div>
 
-            {/* Expanded Content */}
             {isExpanded && (
               <div style={{ padding: '0 16px 16px', animation: 'fadeIn .3s ease' }}>
                 <div className="decompress-line" />
 
-                {/* Team A/B Toggle */}
+                {/* Team Toggle */}
                 <div style={{ display: 'flex', marginBottom: 12, border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', width: 'fit-content' }}>
                   {(['A', 'B'] as const).map(t => (
                     <button key={t} onClick={() => setActiveTeamTab(t)} style={{
@@ -204,11 +265,10 @@ export function Review({ userName }: { userName?: string }) {
                   ))}
                 </div>
 
-                {/* Fields */}
                 {FIELDS.map(f => {
                   const dtKey = `${day.key}_${activeTeamTab}`;
                   const dt = data.dayTeams[dtKey] || emptyDayTeamReview();
-                  const entries = (Array.isArray(dt[f.key]) ? dt[f.key] : []) as ReviewEntry[];
+                  const entries = ensureIds(dt[f.key] || []);
                   const inputKey = `${dtKey}_${f.key}`;
 
                   return (
@@ -223,20 +283,8 @@ export function Review({ userName }: { userName?: string }) {
                         {entries.length > 0 && <span style={{ color: 'var(--neon-emerald)' }}>({entries.length})</span>}
                       </label>
 
-                      {renderEntries(entries)}
-
-                      <div className="comment-input-wrap">
-                        <input
-                          className="comment-input"
-                          type="text"
-                          value={inputs[inputKey] || ''}
-                          placeholder={f.placeholder}
-                          onChange={e => setInputs(prev => ({ ...prev, [inputKey]: e.target.value }))}
-                          onKeyDown={e => { if (e.key === 'Enter') addEntry(dtKey, f.key, inputs[inputKey] || ''); }}
-                        />
-                        <button className="comment-send" onClick={() => addEntry(dtKey, f.key, inputs[inputKey] || '')}
-                          disabled={!(inputs[inputKey] || '').trim()}>POST</button>
-                      </div>
+                      {renderEntries(entries, (entryId) => deleteEntry(dtKey, f.key, entryId))}
+                      {renderInput(inputKey, f.placeholder, (text) => addEntry(dtKey, f.key, text))}
                     </div>
                   );
                 })}
@@ -256,27 +304,8 @@ export function Review({ userName }: { userName?: string }) {
           OVERALL MISSION REVIEW
         </label>
 
-        {data.overall.length > 0 && (
-          <div style={{ marginBottom: 10 }}>
-            {data.overall.map((e, i) => (
-              <div key={i} className="comment-item" style={{ borderLeftColor: 'var(--neon-purple)' }}>
-                <div className="comment-author"><span>{e.author}</span>
-                  <span className="comment-time">{new Date(e.timestamp).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-                <div className="comment-text"><MdText text={e.text} /></div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="comment-input-wrap">
-          <input className="comment-input" type="text" value={inputs['overall'] || ''}
-            placeholder="出張全体の振り返り、次のアクション"
-            onChange={e => setInputs(prev => ({ ...prev, overall: e.target.value }))}
-            onKeyDown={e => { if (e.key === 'Enter') addOverall(inputs['overall'] || ''); }} />
-          <button className="comment-send" onClick={() => addOverall(inputs['overall'] || '')}
-            disabled={!(inputs['overall'] || '').trim()}>POST</button>
-        </div>
+        {renderEntries(ensureIds(data.overall), deleteOverall, 'var(--neon-purple)')}
+        {renderInput('overall', '出張全体の振り返り、次のアクション\nMarkdown記法が使えます', addOverall)}
       </div>
     </div>
   );
