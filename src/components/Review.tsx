@@ -62,25 +62,31 @@ export function Review({ userName }: { userName?: string }) {
       const revRef = ref(db, 'review_v2');
       const unsub = onValue(revRef, (snap) => {
         const val = snap.val();
-        if (val && val.dayTeams) {
-          const merged = defaultReview();
-          Object.keys(val.dayTeams || {}).forEach(k => {
+        if (!val) {
+          // First time: no data at all in Firebase — write defaults
+          const d = defaultReview();
+          set(revRef, d).catch(() => {});
+          setData(d);
+          return;
+        }
+        // Merge with defaults to handle missing/stripped fields
+        const merged = defaultReview();
+        if (val.dayTeams) {
+          Object.keys(val.dayTeams).forEach(k => {
             if (merged.dayTeams[k]) {
-              const src = val.dayTeams[k];
+              const src = val.dayTeams[k] || {};
               merged.dayTeams[k] = {
-                outcomes: ensureIds(src.outcomes), improvements: ensureIds(src.improvements),
-                sharing: ensureIds(src.sharing), freeText: ensureIds(src.freeText),
+                outcomes: ensureIds(src.outcomes),
+                improvements: ensureIds(src.improvements),
+                sharing: ensureIds(src.sharing),
+                freeText: ensureIds(src.freeText),
               };
             }
           });
-          merged.overall = ensureIds(val.overall);
-          setData(merged);
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
-        } else {
-          const d = defaultReview();
-          try { set(revRef, d); } catch {}
-          setData(d);
         }
+        if (val.overall) merged.overall = ensureIds(val.overall);
+        setData(merged);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
       });
       return () => unsub();
     } else {

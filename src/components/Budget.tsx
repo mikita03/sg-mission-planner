@@ -191,9 +191,9 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
             </div>
           )}
         </div>
-        <div className="info-card" style={{ flex: 2, minWidth: 240 }}>
+        <div className="info-card" style={{ flex: 2, minWidth: 280 }}>
           <div className="info-label">BY CATEGORY</div>
-          <div style={{ display: 'flex', gap: 14, marginTop: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 16, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* 9-3: Donut Chart */}
             {(() => {
               const entries = Object.entries(catTotals).filter(([, v]) => v > 0);
@@ -201,29 +201,29 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
               let offset = 0;
               return (
                 <>
-                  <svg viewBox="0 0 120 120" width="110" height="110" style={{ flexShrink: 0 }}>
-                    <circle cx="60" cy="60" r="48" fill="none" stroke="var(--border)" strokeWidth="14" />
+                  <svg viewBox="0 0 140 140" width="130" height="130" style={{ flexShrink: 0 }}>
+                    <circle cx="70" cy="70" r="55" fill="none" stroke="var(--border)" strokeWidth="16" />
                     {entries.map(([cat, val]) => {
                       const pct = total > 0 ? val / total : 0;
-                      const circ = 2 * Math.PI * 48;
+                      const circ = 2 * Math.PI * 55;
                       const dash = pct * circ;
                       const gap = circ - dash;
-                      const el = <circle key={cat} cx="60" cy="60" r="48" fill="none" stroke={colors[cat] || '#6b7280'} strokeWidth="14" strokeDasharray={`${dash} ${gap}`} strokeDashoffset={-offset} transform="rotate(-90 60 60)" style={{ filter: `drop-shadow(0 0 4px ${colors[cat] || '#6b7280'})`, transition: 'stroke-dasharray .5s ease' }} />;
+                      const el = <circle key={cat} cx="70" cy="70" r="55" fill="none" stroke={colors[cat] || '#6b7280'} strokeWidth="16" strokeDasharray={`${dash} ${gap}`} strokeDashoffset={-offset} transform="rotate(-90 70 70)" style={{ filter: `drop-shadow(0 0 4px ${colors[cat] || '#6b7280'})`, transition: 'stroke-dasharray .5s ease' }} />;
                       offset += dash;
                       return el;
                     })}
-                    <text x="60" y="57" textAnchor="middle" fill="var(--neon-cyan)" fontFamily="Orbitron" fontSize="11" fontWeight="700">{displayAmount(total)}</text>
-                    <text x="60" y="70" textAnchor="middle" fill="var(--text3)" fontFamily="Share Tech Mono" fontSize="8">TOTAL</text>
+                    <text x="70" y="66" textAnchor="middle" fill="var(--neon-cyan)" fontFamily="Orbitron" fontSize="14" fontWeight="700">{displayAmount(total)}</text>
+                    <text x="70" y="82" textAnchor="middle" fill="var(--text3)" fontFamily="Share Tech Mono" fontSize="10">TOTAL</text>
                   </svg>
-                  <div style={{ flex: 1, minWidth: 120 }}>
+                  <div style={{ flex: 1, minWidth: 140 }}>
                     {entries.map(([cat, val]) => {
                       const pct = total > 0 ? (val / total * 100) : 0;
                       return (
-                        <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 2 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: 2, background: colors[cat] || '#6b7280', flexShrink: 0, boxShadow: `0 0 4px ${colors[cat] || '#6b7280'}` }} />
-                          <span style={{ fontFamily: 'Rajdhani', fontSize: 12, fontWeight: 600, color: 'var(--text2)', flex: 1 }}>{cat}</span>
-                          <span style={{ fontFamily: 'Share Tech Mono', fontSize: 11, color: 'var(--neon-cyan)', minWidth: 50, textAlign: 'right' }}>{displayAmount(val)}</span>
-                          <span style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', minWidth: 30, textAlign: 'right' }}>{pct.toFixed(0)}%</span>
+                        <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                          <span style={{ width: 10, height: 10, borderRadius: 2, background: colors[cat] || '#6b7280', flexShrink: 0, boxShadow: `0 0 4px ${colors[cat] || '#6b7280'}` }} />
+                          <span style={{ fontFamily: 'Rajdhani', fontSize: 14, fontWeight: 600, color: 'var(--text)', flex: 1 }}>{cat}</span>
+                          <span style={{ fontFamily: 'Orbitron, monospace', fontSize: 13, color: 'var(--neon-cyan)', minWidth: 55, textAlign: 'right', letterSpacing: '.02em' }}>{displayAmount(val)}</span>
+                          <span style={{ fontFamily: 'Orbitron, monospace', fontSize: 13, fontWeight: 700, color: 'var(--text2)', minWidth: 38, textAlign: 'right' }}>{pct.toFixed(0)}%</span>
                         </div>
                       );
                     })}
