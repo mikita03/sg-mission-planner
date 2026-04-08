@@ -46,6 +46,7 @@ export default function App() {
       { path: 'review_v2', key: 'sg_mission_review_v2' },
       { path: 'roster', key: 'sg_mission_roster' },
       { path: 'travel', key: 'sg_mission_travel' },
+      { path: 'visit_candidates', key: 'sg_mission_visits' },
     ];
     const unsubs = syncs.map(({ path, key }) =>
       onValue(ref(db!, path), (snap) => {
@@ -437,7 +438,7 @@ export default function App() {
             )}
 
             {activeTab === 'visits' && (
-              <VisitList blocks={blocks} onSelectBlock={handleSelectBlock} />
+              <VisitList blocks={blocks} userName={user?.name} onAddBlock={addBlock} onSelectBlock={handleSelectBlock} />
             )}
 
             {activeTab === 'budget' && (
