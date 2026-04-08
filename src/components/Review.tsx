@@ -62,6 +62,7 @@ export function Review({ userName }: { userName?: string }) {
           });
           merged.overall = Array.isArray(val.overall) ? val.overall : [];
           setData(merged);
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
         } else {
           const d = defaultReview();
           try { set(revRef, d); } catch {}
@@ -79,10 +80,9 @@ export function Review({ userName }: { userName?: string }) {
 
   const save = useCallback((newData: ReviewData) => {
     setData(newData);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newData)); } catch { /* */ }
     if (isFirebaseConfigured && db) {
       set(ref(db, 'review_v2'), newData);
-    } else {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newData)); } catch { /* */ }
     }
   }, []);
 

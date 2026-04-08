@@ -46,7 +46,8 @@ export function Budget(_props: { userName?: string }) {
       const budgetRef = ref(db, 'budget');
       const unsub = onValue(budgetRef, (snap) => {
         const val = snap.val();
-        if (val && val.items) { setData(val); } else { const d = { items: defaultItems(), rateJPY: DEFAULT_RATE }; set(budgetRef, d); setData(d); }
+        if (val && val.items) { setData(val); try { localStorage.setItem(STORAGE_KEY, JSON.stringify(val)); } catch {} }
+        else { const d = { items: defaultItems(), rateJPY: DEFAULT_RATE }; set(budgetRef, d); setData(d); }
         setLoaded(true);
       });
       return () => unsub();
@@ -58,8 +59,8 @@ export function Budget(_props: { userName?: string }) {
 
   const save = useCallback((newData: BudgetData) => {
     setData(newData);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newData)); } catch { /* */ }
     if (isFirebaseConfigured && db) set(ref(db, 'budget'), newData);
-    else try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newData)); } catch { /* */ }
   }, []);
 
   const updateItem = useCallback((id: string, field: keyof BudgetItem, value: string | number) => {

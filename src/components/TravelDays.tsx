@@ -26,7 +26,7 @@ const STORAGE_KEY = 'sg_mission_travel';
 function defaultTravel(): TravelDayData {
   return {
     arrival: { flight: '', departure: 'NRT 18:00', arrivalTime: 'SIN 23:30', hotel: '', hotelCI: '24:00', memo: '' },
-    departure: { hotelCO: '08:00', flight: '', departure: 'SIN 10:00', arrivalTime: 'NRT 18:00', memo: '' },
+    departure: { hotelCO: '08:00', flight: '', departure: 'SIN 24:00', arrivalTime: 'NRT（翌日）', memo: '' },
   };
 }
 
@@ -128,7 +128,7 @@ export function TravelDays() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span className="ic" dangerouslySetInnerHTML={{ __html: ic('plane') }} />
             <span style={{ fontFamily: 'Orbitron, monospace', fontSize: 12, color: 'var(--neon-purple)', letterSpacing: '.08em' }}>
-              5/22 THU — DEPARTURE
+              5/22 FRI — DEPARTURE
             </span>
           </div>
         </div>
