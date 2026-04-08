@@ -4,7 +4,7 @@ import { DAYS, getCatDisplay, ic, PARENT_CATEGORIES, PARENT_CATEGORY_KEYS } from
 import { m2t, t2m } from '../utils/time';
 import { MarkdownField, MdText } from './MarkdownField';
 
-type WizardStep = 'category' | 'details' | 'movement' | 'edit';
+type WizardStep = 'category' | 'details' | 'movement' | 'preview' | 'edit';
 
 interface Props {
   block: Block | null;
@@ -32,7 +32,7 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
     if (wizardMode && open) {
       setStep('category');
     } else if (open && !wizardMode) {
-      setStep('edit');
+      setStep('preview');
     }
     setCommentText('');
     setMoveBefore({ add: false, subType: 'taxi', dur: 30, from: '' });
@@ -318,6 +318,106 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
             </div>
           )}
 
+          {/* ═══ PREVIEW MODE (read-only) ═══ */}
+          {step === 'preview' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontFamily: 'Rajdhani', fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>
+                    <span className="ic" dangerouslySetInnerHTML={{ __html: ic(cat.ico) }} style={{ marginRight: 6 }} />
+                    {block.label || cat.lbl}
+                    {block.draft && <span className="draft-tag" style={{ marginLeft: 8 }}>仮</span>}
+                  </div>
+                  <div style={{ fontFamily: 'Share Tech Mono', fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+                    {DAYS[parseInt(block.day[1])]?.label} ・ Team {block.team}
+                  </div>
+                </div>
+                <button className="btn" style={{ fontSize: 12, flexShrink: 0 }} onClick={() => setStep('edit')}>
+                  <span className="ic ic-sm" dangerouslySetInnerHTML={{ __html: ic('edit') }} /> EDIT
+                </button>
+              </div>
+
+              {/* Time */}
+              <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 16, color: 'var(--neon-cyan)', letterSpacing: '.04em', marginBottom: 12, textShadow: '0 0 8px #00e5ff30' }}>
+                {block.start} – {endTime}
+                <span style={{ fontSize: 12, color: 'var(--text3)', marginLeft: 8 }}>{block.dur}min</span>
+              </div>
+
+              {/* Info grid */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'Rajdhani', fontSize: 14, color: 'var(--text2)', lineHeight: 1.6 }}>
+                {block.detail && <div><span style={{ color: 'var(--text3)', marginRight: 8, fontSize: 12 }}>📋</span>{block.detail}</div>}
+                {block.location && (
+                  <div>
+                    <span style={{ color: 'var(--text3)', marginRight: 8, fontSize: 12 }}>📍</span>{block.location}
+                    <a href={mapsUrl(block.location)} target="_blank" rel="noopener noreferrer" className="maps-link" style={{ marginLeft: 6 }}>
+                      <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAP
+                    </a>
+                  </div>
+                )}
+                {block.fromLocation && <div><span style={{ color: 'var(--text3)', marginRight: 8, fontSize: 12 }}>🚀</span>From: {block.fromLocation}</div>}
+                {block.contact && <div><span style={{ color: 'var(--text3)', marginRight: 8, fontSize: 12 }}>☎</span>{block.contact}</div>}
+                {block.assignee && <div><span style={{ color: 'var(--text3)', marginRight: 8, fontSize: 12 }}>👤</span>{block.assignee}</div>}
+              </div>
+
+              {/* Memo */}
+              {block.memo && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 4, letterSpacing: '.06em' }}>MEMO</div>
+                  <MdText text={block.memo} />
+                </div>
+              )}
+
+              {/* Status badge */}
+              {block.status && block.status !== 'pending' && (
+                <div style={{ marginTop: 8 }}>
+                  <span className={`status-badge st-${block.status}`} style={{ fontSize: 12, padding: '3px 10px' }}>
+                    {block.status === 'confirmed' ? '確定' : block.status === 'negotiating' ? '交渉中' : 'キャンセル'}
+                  </span>
+                </div>
+              )}
+
+              {/* Comments — visible in preview */}
+              <div className="comment-thread" style={{ marginTop: 12 }}>
+                <div className="comment-thread-title">
+                  <span className="ic ic-sm" dangerouslySetInnerHTML={{ __html: ic('edit') }} />
+                  COMMENTS ({comments.length})
+                </div>
+                {comments.length > 0 && (
+                  <div className="comment-list">
+                    {comments.map(c => (
+                      <div key={c.id} className="comment-item">
+                        <div className="comment-author"><span>{c.author}</span>
+                          <span className="comment-time">{new Date(c.timestamp).toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
+                        </div>
+                        <div className="comment-text"><MdText text={c.text} /></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="comment-input-wrap" style={{ flexDirection: 'column', gap: 4 }}>
+                  <textarea className="comment-input"
+                    style={{ width: '100%', minHeight: 40, resize: 'vertical', fontFamily: 'Rajdhani, sans-serif', fontSize: 13 }}
+                    value={commentText}
+                    placeholder={`${userName || 'You'} としてコメント... (Markdown対応)`}
+                    onChange={e => setCommentText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); handleSendComment(); } }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'Share Tech Mono', fontSize: 9, color: 'var(--text3)' }}>Shift+Enter: 投稿</span>
+                    <button className="comment-send" onClick={handleSendComment} disabled={!commentText.trim()}>SEND</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Meta */}
+              {block.editedAt > 0 && (
+                <div className="drawer-meta">
+                  {block.editedBy && `Edited by ${block.editedBy} · `}
+                  {new Date(block.editedAt).toLocaleString('ja-JP')}
+                </div>
+              )}
+            </>
+          )}
+
           {/* ═══ EDIT MODE (existing block) ═══ */}
           {step === 'edit' && (
             <>
@@ -453,7 +553,19 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
           )}
         </div>
 
-        {/* Footer - only in edit mode */}
+        {/* Footer - preview mode */}
+        {step === 'preview' && (
+          <div className="drawer-footer">
+            <button className="btn" onClick={() => onCopy(block.id)}>
+              <span className="ic" dangerouslySetInnerHTML={{ __html: ic('copy') }} /> COPY
+            </button>
+            <button className="btn btn-primary" onClick={() => setStep('edit')}>
+              <span className="ic" dangerouslySetInnerHTML={{ __html: ic('edit') }} /> EDIT
+            </button>
+          </div>
+        )}
+
+        {/* Footer - edit mode */}
         {step === 'edit' && (
           <div className="drawer-footer">
             <button className="btn btn-danger" onClick={() => { onDelete(block.id); onClose(); }}>
