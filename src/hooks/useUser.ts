@@ -71,11 +71,9 @@ export function useUser() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         if (firebaseUser.isAnonymous) {
-          const savedName = localStorage.getItem(NICKNAME_KEY) || '';
-          if (savedName) {
-            setUser({ uid: firebaseUser.uid, name: savedName, email: '', photoURL: '' });
-            setupPresence(firebaseUser.uid, savedName);
-          } else { setNeedsLogin(true); }
+          // Anonymous sessions no longer allowed — sign out and show login
+          try { await firebaseSignOut(auth!); } catch { /* */ }
+          setNeedsLogin(true);
           setLoading(false);
           return;
         }
