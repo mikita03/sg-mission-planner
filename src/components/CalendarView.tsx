@@ -340,7 +340,7 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, isM
       </div>
 
       {/* Calendar */}
-      <div className="cal-wrap" onMouseMove={e => {
+      <div className={`cal-wrap${isMobile ? ' cal-single-day' : ''}`} onMouseMove={e => {
         const rect = e.currentTarget.getBoundingClientRect();
         e.currentTarget.style.setProperty('--mouse-x', ((e.clientX - rect.left) / rect.width * 100).toFixed(1) + '%');
         e.currentTarget.style.setProperty('--mouse-y', ((e.clientY - rect.top) / rect.height * 100).toFixed(1) + '%');
