@@ -157,7 +157,20 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
             style={{ ...inputStyle, width: 80, textAlign: 'center' as const, fontSize: 13 }} />
           <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 12, color: 'var(--text3)' }}>SGD</span>
           <button className="btn" style={{ padding: '6px 14px', fontSize: 13 }}
-            onClick={() => { setDisplayCurrency(prev => prev === 'SGD' ? 'JPY' : 'SGD'); triggerGlitch(); }}>
+            onClick={() => {
+              const next = displayCurrency === 'SGD' ? 'JPY' : 'SGD';
+              // Convert all items to the new currency
+              const converted = data.items.map(item => {
+                if (item.currency === next) return item; // already in target
+                const newPrice = next === 'JPY'
+                  ? Math.round(item.unitPrice * data.rateJPY)
+                  : Math.round((item.unitPrice / data.rateJPY) * 100) / 100;
+                return { ...item, unitPrice: newPrice, currency: next as 'SGD' | 'JPY' };
+              });
+              save({ ...data, items: converted });
+              setDisplayCurrency(next);
+              triggerGlitch();
+            }}>
             {displayCurrency}
           </button>
         </div>
@@ -267,10 +280,9 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     <input type="text" inputMode="decimal" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', toNum(e.target.value))}
                       style={{ ...inputStyle, flex: 1, textAlign: 'right' as const }} />
-                    <button onClick={() => updateItem(item.id, 'currency', item.currency === 'SGD' ? 'JPY' : 'SGD')}
-                      style={{ padding: '4px 6px', fontSize: 10, fontFamily: 'Share Tech Mono', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 4, color: item.currency === 'JPY' ? 'var(--neon-amber)' : 'var(--neon-cyan)', cursor: 'pointer', flexShrink: 0, minWidth: 32, textAlign: 'center' }}>
-                      {item.currency}
-                    </button>
+                    <span style={{ fontSize: 10, fontFamily: 'Share Tech Mono', color: item.currency === 'JPY' ? 'var(--neon-amber)' : 'var(--neon-cyan)', flexShrink: 0, minWidth: 24, textAlign: 'center' }}>
+                      {item.currency === 'JPY' ? '¥' : 'S$'}
+                    </span>
                   </div>
                 </td>
                 <td>
