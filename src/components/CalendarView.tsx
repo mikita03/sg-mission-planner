@@ -9,6 +9,8 @@ interface Props {
   currentView: number;
   selectedId: string | null;
   filterTypes: Set<string> | null;
+  isMobile?: boolean;
+  mobileDay?: number;
   getBlockEditor: (blockId: string) => string | null;
   onSelectBlock: (id: string) => void;
   onUpdateBlock: (id: string, updates: Partial<Block>) => void;
@@ -21,8 +23,8 @@ interface HoverInfo {
   y: number;
 }
 
-export function CalendarView({ blocks, currentView, selectedId, filterTypes, getBlockEditor, onSelectBlock, onUpdateBlock, onStartCreate }: Props) {
-  const days = currentView === 0 ? [0, 1] : [2, 3];
+export function CalendarView({ blocks, currentView, selectedId, filterTypes, isMobile, mobileDay, getBlockEditor, onSelectBlock, onUpdateBlock, onStartCreate }: Props) {
+  const days = isMobile && mobileDay !== undefined ? [mobileDay] : currentView === 0 ? [0, 1] : [2, 3];
   const dragRef = useRef<{ id: string; el: HTMLElement; lane: HTMLElement; grabOffset: number; origTop: number } | null>(null);
   const createRef = useRef<{ lane: HTMLElement; day: string; team: string; startY: number; el: HTMLDivElement | null } | null>(null);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);

@@ -36,7 +36,7 @@ function defaultItems(): BudgetItem[] {
   ];
 }
 
-export function Budget(_props: { userName?: string }) {
+export function Budget(_props: { userName?: string; isMobile?: boolean }) {
   const [data, setData] = useState<BudgetData>({ items: defaultItems(), rateJPY: DEFAULT_RATE });
   const [loaded, setLoaded] = useState(true);
   const [displayCurrency, setDisplayCurrency] = useState<'SGD' | 'JPY'>('SGD');
@@ -157,7 +157,8 @@ export function Budget(_props: { userName?: string }) {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Items — Table (desktop) / Cards (mobile) */}
+      {!_props.isMobile ? (
       <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'auto' }}>
         <table className="visit-table" style={{ minWidth: 650 }}>
           <thead>
@@ -225,6 +226,25 @@ export function Budget(_props: { userName?: string }) {
           </tfoot>
         </table>
       </div>
+      ) : (
+      <div className="budget-cards">
+        {data.items.map(item => (
+          <div key={item.id} className="budget-card">
+            <div className="budget-card-header">
+              <span className="budget-card-cat">{item.category}</span>
+              <span className="budget-card-total">{displayAmount(toSGD(item))}</span>
+            </div>
+            <div className="budget-card-name">{item.name || '（未入力）'}</div>
+            <div className="budget-card-detail">
+              {item.unitPrice.toLocaleString()} {item.currency} × {item.quantity}
+            </div>
+          </div>
+        ))}
+        <div style={{ padding: '12px 0', fontFamily: 'Orbitron, monospace', fontSize: 16, color: 'var(--neon-cyan)', textAlign: 'right', textShadow: '0 0 8px #00e5ff30' }}>
+          TOTAL: {displayAmount(total)}
+        </div>
+      </div>
+      )}
 
       <div style={{ marginTop: 12 }}>
         <button className="btn" onClick={addItem}>

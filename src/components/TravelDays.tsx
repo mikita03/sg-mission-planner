@@ -75,7 +75,7 @@ export function TravelDays() {
   };
 
   return (
-    <div style={{
+    <div className="travel-grid" style={{
       display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12,
       animation: 'fadeIn .4s ease',
     }}>

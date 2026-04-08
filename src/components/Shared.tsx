@@ -70,7 +70,7 @@ export function ParticleCanvas() {
     const ctx = c.getContext('2d');
     if (!ctx) return;
     let W = 0, H = 0, animId = 0;
-    const N = 50;
+    const N = window.matchMedia('(max-width:767px)').matches ? 15 : 50;
     const P = Array.from({ length: N }, () => ({
       x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight,
       vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.25,

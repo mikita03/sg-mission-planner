@@ -601,3 +601,124 @@ body{
 
 /* ═══ Phase 5-5: Change Notification Toast ═══ */
 .tt.remote{background:linear-gradient(135deg,rgba(16,185,129,.15),var(--bg2))!important;border-color:var(--neon-emerald)!important}
+
+/* ═══════════════════════════════════════════════════════
+   PHASE 6: MOBILE RESPONSIVE (max-width: 767px)
+   ═══════════════════════════════════════════════════════ */
+
+/* ═══ 6-1: Mobile Day Selector ═══ */
+.mobile-day-selector{display:flex;gap:4px;margin-bottom:10px}
+.mobile-day-selector button{flex:1;padding:10px 4px;font-family:Orbitron,monospace;font-size:11px;letter-spacing:.05em;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text3);cursor:pointer;transition:all .2s}
+.mobile-day-selector button.active{background:linear-gradient(135deg,rgba(0,229,255,.12),rgba(0,229,255,.04));border-color:var(--neon-cyan);color:var(--neon-cyan);box-shadow:0 0 8px rgba(0,229,255,.2)}
+
+/* ═══ 6-5: Bottom Nav ═══ */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:200;display:flex;background:var(--bg3);border-top:1px solid var(--border2);padding:0 0 env(safe-area-inset-bottom);backdrop-filter:blur(12px)}
+.bottom-nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px 8px;background:none;border:none;color:var(--text3);font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.06em;cursor:pointer;transition:color .2s;min-height:50px}
+.bottom-nav button .ic{width:20px;height:20px}
+.bottom-nav button.active{color:var(--neon-cyan)}
+.bottom-nav button.active .ic{filter:drop-shadow(0 0 4px rgba(0,229,255,.5))}
+
+/* ═══ 6-6: Budget Cards ═══ */
+.budget-cards{display:flex;flex-direction:column;gap:8px}
+.budget-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;position:relative;overflow:hidden}
+.budget-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--neon-cyan),transparent);opacity:.3}
+.budget-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.budget-card-cat{font-family:Share Tech Mono,monospace;font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;background:var(--bg3);border-radius:4px}
+.budget-card-total{font-family:Orbitron,monospace;font-size:16px;font-weight:700;color:var(--neon-cyan);text-shadow:0 0 6px rgba(0,229,255,.2);letter-spacing:.03em}
+.budget-card-name{font-family:Rajdhani,sans-serif;font-size:14px;font-weight:600;color:var(--text)}
+.budget-card-detail{font-family:Share Tech Mono,monospace;font-size:11px;color:var(--text3);margin-top:2px}
+
+@media(max-width:767px){
+  /* ═══ General Layout ═══ */
+  .app{padding:10px 10px 70px!important;max-width:100%}
+  .hd{flex-direction:column;gap:8px}
+  .hd h1{font-size:16px!important}
+  .hd .meta{font-size:9px!important;line-height:1.4}
+  .hd>div:last-child{flex-wrap:wrap;gap:4px}
+  .hd>div:last-child .btn{font-size:11px;padding:5px 10px}
+
+  /* ═══ Info Bar ═══ */
+  .info-bar{flex-direction:column;gap:6px}
+  .info-card{padding:8px 12px}
+  .info-card .info-value{font-size:18px!important}
+  .info-card .radar-wrap{display:none}
+
+  /* ═══ Progress ═══ */
+  .progress-wrap{margin-bottom:8px}
+
+  /* ═══ Tab Bar — hide on mobile (bottom nav used) ═══ */
+  .tab-bar{display:none!important}
+
+  /* ═══ 6-8: Hide HUD / MouseGlow / FxCanvas on mobile ═══ */
+  .hud-corner{display:none!important}
+  .mouse-glow{display:none!important}
+  .fx-canvas{display:none!important}
+
+  /* ═══ Footer hint — hide ═══ */
+  .foot{display:none!important}
+
+  /* ═══ View Toggle — hide (mobile day selector used) ═══ */
+  .view-toggle{display:none!important}
+
+  /* ═══ Legend — compact ═══ */
+  .lg{gap:4px!important;flex-wrap:wrap;margin-bottom:6px}
+  .lg-item{font-size:10px!important;padding:4px 8px!important;min-height:32px;display:inline-flex;align-items:center}
+
+  /* ═══ Travel Day Cards ═══ */
+  .app-body>div:first-child>div[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+
+  /* ═══ Day Summary ═══ */
+  .day-summary{flex-direction:column;gap:2px;margin-bottom:6px}
+
+  /* ═══ 6-1: Calendar — single day, full width ═══ */
+  .cal-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .cal-header .ch-day{min-width:0}
+  .cal-header .ch-day .dn{font-size:9px}
+
+  /* ═══ 6-7: Blocks — larger tap targets ═══ */
+  .bk{min-height:44px}
+  .bk .bk-label{font-size:12px}
+  .bk .bk-time{font-size:10px}
+  .bk .rh,.bk .rh-top{height:14px}
+
+  /* ═══ 6-3: Drawer — slide up from bottom, full screen ═══ */
+  .drawer{position:fixed!important;top:auto!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-height:85vh;border-radius:16px 16px 0 0!important;border-bottom:none!important;z-index:250!important;transform:translateY(100%);animation:slideUp .3s ease forwards!important}
+  .drawer.open{transform:translateY(0)}
+  .drawer-overlay{display:block!important;z-index:240!important}
+  .app-main.drawer-open{margin-right:0!important}
+
+  /* ═══ 6-2: Kanban — horizontal scroll ═══ */
+  .kanban{grid-template-columns:repeat(4,75vw)!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;gap:8px;padding-bottom:8px}
+  .kanban-col{scroll-snap-align:start;min-width:0}
+  .kanban-col-header{font-size:11px;padding:8px 10px}
+
+  /* ═══ 6-7: Kanban cards — larger tap targets ═══ */
+  .kanban-card{padding:12px!important;min-height:48px}
+  .kanban-card-company{font-size:14px}
+  .kanban-drop-zone{min-height:48px;font-size:12px}
+
+  /* ═══ Visit table (in Visit List) ═══ */
+  .visit-table{font-size:11px}
+  .visit-table th,.visit-table td{padding:8px 6px}
+
+  /* ═══ Budget header — stack on mobile ═══ */
+  .budget-cards .budget-card{min-height:48px}
+
+  /* ═══ Review — larger tap targets ═══ */
+  .review-reactions button{min-width:44px;min-height:36px;font-size:14px}
+
+  /* ═══ Buttons — larger tap targets ═══ */
+  .btn{min-height:36px;padding:8px 14px;font-size:12px}
+  .btn-primary{min-height:44px}
+  .wizard-sub-btn-sm{min-height:36px;padding:6px 10px}
+
+  /* ═══ Drawer fields — larger ═══ */
+  .drawer-field input,.drawer-field select,.drawer-field textarea{min-height:40px;font-size:14px}
+}
+
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+/* Travel grid mobile override */
+@media(max-width:767px){
+  .travel-grid{grid-template-columns:1fr!important;gap:6px!important}
+}

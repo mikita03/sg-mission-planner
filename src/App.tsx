@@ -3,6 +3,7 @@ import type { Tab, Block } from './types';
 import { useBlocks } from './hooks/useBlocks';
 import { useUser } from './hooks/useUser';
 import { usePresence } from './hooks/usePresence';
+import { useIsMobile } from './hooks/useIsMobile';
 import { ic, DAYS, PARENT_CATEGORIES, PARENT_CATEGORY_KEYS } from './constants/categories';
 import { getSGT, formatSGTDate, formatSGTTime } from './utils/time';
 
@@ -32,6 +33,8 @@ export default function App() {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [filterTypes, setFilterTypes] = useState<Set<string> | null>(null);
   const [wizardMode, setWizardMode] = useState(false);
+  const isMobile = useIsMobile();
+  const [mobileDay, setMobileDay] = useState(0);
 
   // Clocks
   const [sgtTime, setSgtTime] = useState('--:--:--');
@@ -450,23 +453,35 @@ export default function App() {
                 <TravelDays />
 
                 {/* View Toggle */}
-                <div className="view-toggle">
-                  {[0, 1].map(v => (
-                    <button key={v} className={currentView === v ? 'active' : ''} onClick={() => handleViewToggle(v)}>
-                      {v === 0 ? '5/18 MON – 5/19 TUE' : '5/20 WED – 5/21 THU'}
-                      <span className="phase">{v === 0 ? 'PHASE 1: VISITS' : 'PHASE 2: ATxSG'}</span>
-                    </button>
-                  ))}
-                </div>
+                {!isMobile ? (
+                  <div className="view-toggle">
+                    {[0, 1].map(v => (
+                      <button key={v} className={currentView === v ? 'active' : ''} onClick={() => handleViewToggle(v)}>
+                        {v === 0 ? '5/18 MON – 5/19 TUE' : '5/20 WED – 5/21 THU'}
+                        <span className="phase">{v === 0 ? 'PHASE 1: VISITS' : 'PHASE 2: ATxSG'}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mobile-day-selector">
+                    {DAYS.map((d, i) => (
+                      <button key={i} className={mobileDay === i ? 'active' : ''} onClick={() => setMobileDay(i)}>
+                        {d.label.split(' ')[0]}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* Team Roster */}
-                <TeamRosterPanel visibleDays={currentView === 0 ? [0, 1] : [2, 3]} />
+                {!isMobile && <TeamRosterPanel visibleDays={currentView === 0 ? [0, 1] : [2, 3]} />}
 
                 <CalendarView
                   blocks={blocks}
                   currentView={currentView}
                   selectedId={selectedBlockId}
                   filterTypes={filterTypes}
+                  isMobile={isMobile}
+                  mobileDay={mobileDay}
                   getBlockEditor={getBlockEditor}
                   onSelectBlock={handleSelectBlock}
                   onUpdateBlock={handleUpdateBlock}
@@ -484,7 +499,7 @@ export default function App() {
             )}
 
             {activeTab === 'budget' && (
-              <Budget userName={user?.name} />
+              <Budget userName={user?.name} isMobile={isMobile} />
             )}
 
             {activeTab === 'review' && (
@@ -508,6 +523,18 @@ export default function App() {
           />
         </div>
       </div>
+
+      {/* ═══ Mobile Bottom Nav (6-5) ═══ */}
+      {isMobile && (
+        <nav className="bottom-nav">
+          {TABS.map(tab => (
+            <button key={tab.key} className={activeTab === tab.key ? 'active' : ''} onClick={() => handleTabSwitch(tab.key as Tab)}>
+              <span className="ic" dangerouslySetInnerHTML={{ __html: ic(tab.ico) }} />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </nav>
+      )}
     </>
   );
 }
