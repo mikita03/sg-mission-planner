@@ -465,7 +465,7 @@ export default function App() {
         </div>
       )}
 
-      <div className={`app ${booted ? '' : ''}`} style={{ opacity: booted ? 1 : 0, transition: 'opacity .6s' }}>
+      <div className={`app`} style={{ opacity: booted && user ? 1 : 0, pointerEvents: booted && user ? 'auto' : 'none', transition: 'opacity .6s' }}>
         {/* ═══ Header ═══ */}
         <div className="hd">
           <div>
