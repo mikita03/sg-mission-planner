@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ref, onValue, set } from 'firebase/database';
 import { db, isFirebaseConfigured } from '../firebase';
 import { ic } from '../constants/categories';
 import { triggerGlitch } from './Shared';
+
+const BUDGET_LIMIT_SGD = 8000; // overage threshold
 
 interface BudgetItem {
   id: string;
@@ -83,6 +85,26 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
 
   const total = useMemo(() => data.items.reduce((s, item) => s + toSGD(item), 0), [data.items, toSGD]);
   const perPerson = total / 4;
+  const isOverBudget = total > BUDGET_LIMIT_SGD;
+
+  // 8-4: Countup animation
+  const [displayTotal, setDisplayTotal] = useState(0);
+  const animRef = useRef<number>(0);
+  useEffect(() => {
+    cancelAnimationFrame(animRef.current);
+    const start = displayTotal;
+    const diff = total - start;
+    if (Math.abs(diff) < 1) { setDisplayTotal(total); return; }
+    const duration = 600;
+    const t0 = performance.now();
+    function tick(now: number) {
+      const p = Math.min((now - t0) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      setDisplayTotal(start + diff * ease);
+      if (p < 1) animRef.current = requestAnimationFrame(tick);
+    }
+    animRef.current = requestAnimationFrame(tick);
+  }, [total]);
 
   const displayAmount = useCallback((sgd: number) => {
     if (displayCurrency === 'JPY') return `¥${Math.round(sgd * data.rateJPY).toLocaleString()}`;
@@ -121,18 +143,26 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
         </div>
       </div>
 
+      {/* 8-5: Overage Alert */}
+      {isOverBudget && (
+        <div className="budget-alert">
+          <span style={{ fontSize: 16 }}>⚠</span>
+          予算上限 {displayAmount(BUDGET_LIMIT_SGD)} を超過しています（{displayAmount(total - BUDGET_LIMIT_SGD)} オーバー）
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
         <div className="info-card" style={{ flex: 1, minWidth: 140 }}>
           <div className="info-label">TOTAL</div>
-          <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 24, fontWeight: 700, color: 'var(--neon-cyan)', textShadow: '0 0 10px #00e5ff40', letterSpacing: '.04em', marginTop: 4 }}>
-            {displayAmount(total)}
+          <div className="countup" style={{ fontFamily: 'Orbitron, monospace', fontSize: 24, fontWeight: 700, color: isOverBudget ? 'var(--neon-red)' : 'var(--neon-cyan)', textShadow: `0 0 10px ${isOverBudget ? '#ef444440' : '#00e5ff40'}`, letterSpacing: '.04em', marginTop: 4 }}>
+            {displayAmount(displayTotal)}
           </div>
         </div>
         <div className="info-card" style={{ flex: 1, minWidth: 140 }}>
           <div className="info-label">PER PERSON (÷4)</div>
-          <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 24, fontWeight: 700, color: 'var(--neon-cyan)', textShadow: '0 0 10px #00e5ff40', letterSpacing: '.04em', marginTop: 4 }}>
-            {displayAmount(perPerson)}
+          <div className="countup" style={{ fontFamily: 'Orbitron, monospace', fontSize: 24, fontWeight: 700, color: 'var(--neon-cyan)', textShadow: '0 0 10px #00e5ff40', letterSpacing: '.04em', marginTop: 4 }}>
+            {displayAmount(displayTotal / 4)}
           </div>
         </div>
         <div className="info-card" style={{ flex: 2, minWidth: 220 }}>

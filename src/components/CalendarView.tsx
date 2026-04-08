@@ -296,7 +296,12 @@ export function CalendarView({ blocks, currentView, selectedId, filterTypes, isM
     const isDraft = b.draft;
     const isOverlap = overlappingIds.has(b.id);
     const isNext = b.id === nextBlockId;
-    const classes = `bk bk-${cls}${selectedId === b.id ? ' selected' : ''}${isFiltered ? ' filtered-out' : ''}${isDraft ? ' draft' : ''}${isOverlap ? ' overlap-warn' : ''}${isNext ? ' next-block' : ''}`;
+    // 8-1: Chain detection (move↔visit connection)
+    const bEnd = t2m(b.start) + b.dur;
+    const bStart = t2m(b.start);
+    const isChainStart = (b.category === 'move') && blocks.some(o => o.day === b.day && o.team === b.team && o.id !== b.id && (o.category === 'visit' || o.category === 'food' || o.category === 'atxsg') && Math.abs(t2m(o.start) - bEnd) <= 5);
+    const isChainEnd = (b.category === 'visit' || b.category === 'food' || b.category === 'atxsg') && blocks.some(o => o.day === b.day && o.team === b.team && o.id !== b.id && o.category === 'move' && Math.abs(t2m(o.start) + o.dur - bStart) <= 5);
+    const classes = `bk bk-${cls}${selectedId === b.id ? ' selected' : ''}${isFiltered ? ' filtered-out' : ''}${isDraft ? ' draft' : ''}${isOverlap ? ' overlap-warn' : ''}${isNext ? ' next-block' : ''}${isChainStart ? ' chain-start' : ''}${isChainEnd ? ' chain-end' : ''}`;
 
     return (
       <div

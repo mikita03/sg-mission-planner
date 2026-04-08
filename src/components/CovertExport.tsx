@@ -5,8 +5,10 @@ import { triggerGlitch } from './Shared';
 
 const COVERT_LINES = [
   { t: '> INITIATING COVERT EXTRACTION...', cls: 'cmd', d: 300 },
+  { t: '[SYS ] KERNEL: sg-mission-planner v4.8.2', cls: 'info', d: 200 },
   { t: '[AUTH] BYPASSING CORPORATE FIREWALL......... ', cls: 'info', d: 400 },
   { t: '[AUTH] ACCESS GRANTED — CLEARANCE LEVEL: Ω', cls: 'ok', d: 350 },
+  { t: '[NET ] ESTABLISHING SECURE TUNNEL ████████', cls: 'info', d: 250 },
   { t: '[SCAN] INTERCEPTING SCHEDULE DATA...', cls: 'cmd', d: 300 },
   { t: '[DATA] 4 DAYS / 2 TEAMS / {COUNT} BLOCKS CAPTURED', cls: 'data', d: 350 },
   { t: '[DATA] VISIT INTEL: {VISITS} TARGETS IDENTIFIED', cls: 'data', d: 300 },
@@ -14,6 +16,7 @@ const COVERT_LINES = [
   { t: '[ENC ] ENCODING: UTF-8 / FORMAT: PDF/A-1b', cls: 'info', d: 250 },
   { t: '[ENC ] APPLYING COVER: "出張工程表"', cls: 'highlight', d: 350 },
   { t: '[SEC ] WATERMARK: CONFIDENTIAL', cls: 'data', d: 300 },
+  { t: '[SEC ] ANTI-TAMPER: SHA-256 HASH EMBEDDED', cls: 'info', d: 200 },
   { t: '[OUT ] DOCUMENT READY — DEPLOYING TO LOCAL FS', cls: 'ok', d: 400 },
   { t: '> EXTRACTION COMPLETE. COVER YOUR TRACKS.', cls: 'cmd', d: 500 },
 ];
@@ -67,7 +70,7 @@ export function CovertExport({ blocks, onDone }: Props) {
 
   return (
     <div className="covert-overlay" style={{ opacity: done ? 0 : 1, transition: 'opacity .5s' }}>
-      <div className="covert-content">
+      <div className={`covert-content${stamped ? ' covert-glitch' : ''}`}>
         <div className="covert-title">⚠ CLASSIFIED ⚠</div>
         <div className="covert-subtitle">DOCUMENT EXTRACTION IN PROGRESS</div>
         <div className="covert-terminal">

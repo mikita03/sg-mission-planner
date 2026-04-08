@@ -194,7 +194,7 @@ export function Review({ userName }: { userName?: string }) {
           const reactions = e.reactions || {};
 
           return (
-            <div key={e.id || e.timestamp} className="comment-item" style={{ borderLeftColor: borderColor, position: 'relative' }}>
+            <div key={e.id || e.timestamp} className="comment-item review-entry" style={{ borderLeftColor: borderColor, position: 'relative', animationDelay: `${0.05 * entries.indexOf(e)}s` }}>
               {/* Header */}
               <div className="comment-author">
                 <span>{e.author}</span>
@@ -354,11 +354,11 @@ export function Review({ userName }: { userName?: string }) {
                 <div className="decompress-line" />
                 <div style={{ display: 'flex', marginBottom: 12, border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', width: 'fit-content' }}>
                   {(['A', 'B'] as const).map(t => (
-                    <button key={t} onClick={() => setActiveTeamTab(t)} style={{
+                    <button key={t} className={`team-tab-${t.toLowerCase()}${activeTeamTab === t ? ' active' : ''}`} onClick={() => setActiveTeamTab(t)} style={{
                       padding: '6px 20px', border: 'none', cursor: 'pointer',
                       fontFamily: 'Rajdhani, sans-serif', fontSize: 13, fontWeight: 600, letterSpacing: '.06em',
-                      background: activeTeamTab === t ? 'linear-gradient(135deg, #00e5ff15, #3d8bfd15)' : 'var(--bg2)',
-                      color: activeTeamTab === t ? 'var(--neon-cyan)' : 'var(--text3)',
+                      background: activeTeamTab === t ? undefined : 'var(--bg2)',
+                      color: activeTeamTab === t ? undefined : 'var(--text3)',
                       borderRight: t === 'A' ? '1px solid var(--border)' : 'none',
                     }}>TEAM {t}</button>
                   ))}

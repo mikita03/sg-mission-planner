@@ -778,3 +778,47 @@ body{
 .shortcut-row:last-child{border-bottom:none}
 .shortcut-row kbd{display:inline-block;min-width:44px;padding:4px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;font-family:Share Tech Mono,monospace;font-size:12px;color:var(--neon-cyan);text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .shortcut-row span{font-family:Rajdhani,sans-serif;font-size:14px;color:var(--text2)}
+
+/* ═══ Phase 8: Visual & Effects ═══ */
+
+/* 8-1: Block connection indicator (move → visit chain) */
+.bk.chain-start::after{content:'▼';position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--neon-cyan);opacity:.6;z-index:5;text-shadow:0 0 4px var(--neon-cyan)}
+.bk.chain-end::before{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:var(--neon-cyan);opacity:.5;z-index:5;box-shadow:0 0 6px var(--neon-cyan)}
+
+/* 8-2: Kanban confirmed card checkmark */
+.kanban-card-schedule::before{content:'✓ ';color:var(--neon-emerald);font-weight:700;animation:checkPop .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes checkPop{0%{transform:scale(0);opacity:0}60%{transform:scale(1.4)}100%{transform:scale(1);opacity:1}}
+
+/* 8-3: Kanban card progress bar (top edge) */
+.kanban-card{position:relative;overflow:hidden}
+.kanban-card::before{content:'';position:absolute;top:0;left:0;height:2px;transition:width .4s ease,background .4s ease}
+.col-candidate .kanban-card::before{width:25%;background:var(--text3)}
+.col-approaching .kanban-card::before{width:50%;background:var(--neon-amber)}
+.col-confirmed .kanban-card::before{width:100%;background:var(--neon-emerald)}
+.col-cancelled .kanban-card::before{width:100%;background:var(--neon-red);opacity:.5}
+
+/* 8-5: Budget overage alert */
+.budget-alert{padding:10px 14px;margin-bottom:12px;border-radius:var(--radius);background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(239,68,68,.04));border:1px solid var(--neon-red);font-family:Share Tech Mono,monospace;font-size:12px;color:var(--neon-red);display:flex;align-items:center;gap:8px;animation:pulse-red 2s infinite}
+
+/* 8-6: Review entry slide-in */
+.review-entry{animation:reviewSlideIn .35s ease both}
+@keyframes reviewSlideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+
+/* 8-7: Team color coding */
+.team-accent-a{border-left:3px solid var(--neon-cyan)!important}
+.team-accent-b{border-left:3px solid var(--neon-purple)!important}
+.team-tab-a.active{background:linear-gradient(135deg,#00e5ff15,#00e5ff05)!important;color:var(--neon-cyan)!important;border-color:var(--neon-cyan)!important}
+.team-tab-b.active{background:linear-gradient(135deg,#a855f715,#a855f705)!important;color:var(--neon-purple)!important;border-color:var(--neon-purple)!important}
+
+/* 8-8: Covert Ops enhancement */
+.covert-overlay{background:radial-gradient(ellipse at center,rgba(0,10,20,.97),rgba(0,0,0,.99))!important}
+.covert-terminal{text-shadow:0 0 3px currentColor}
+.covert-line.highlight{color:#f59e0b;font-weight:700}
+.covert-line.data{color:#a855f7}
+.covert-stamp{text-shadow:0 0 20px rgba(239,68,68,.5),0 0 40px rgba(239,68,68,.3)}
+.covert-progress-fill{box-shadow:0 0 10px var(--neon-cyan),0 0 20px rgba(0,229,255,.3)}
+.covert-glitch{animation:covertGlitch .15s linear 3}
+@keyframes covertGlitch{0%{transform:translate(0)}25%{transform:translate(-2px,1px)}50%{transform:translate(2px,-1px)}75%{transform:translate(-1px,-1px)}100%{transform:translate(0)}}
+
+/* 8-4: Countup animation helper */
+.countup{transition:opacity .3s;display:inline-block}
