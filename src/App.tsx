@@ -18,11 +18,12 @@ import { TeamRosterPanel } from './components/TeamRoster';
 import { TravelDays } from './components/TravelDays';
 import { isFirebaseConfigured, db } from './firebase';
 import { ref, onValue, update } from 'firebase/database';
+import authAssetImg from './assets/auth_asset.png';
 
 const MISSION_START = new Date('2026-05-18T00:00:00+08:00');
 
 export default function App() {
-  const { user, needsLogin, needsPassphrase, passphraseError, pendingUser, signInWithGoogle, submitPassphrase, signInLocal, signOut } = useUser();
+  const { user, needsLogin, needsPassphrase, passphraseError, justLoggedIn, pendingUser, signInWithGoogle, submitPassphrase, signInLocal, signOut, clearJustLoggedIn } = useUser();
   const { blocks, loaded, mode, addBlock, updateBlock, deleteBlock, duplicateBlock, addComment, hasAdjacentMove } = useBlocks(user?.name);
   const { otherOnlineUsers, setActiveBlock, getBlockEditor } = usePresence(user?.uid || null);
   const [localNameInput, setLocalNameInput] = useState('');
@@ -308,7 +309,30 @@ export default function App() {
 
   return (
     <>
-      {!booted && <BootScreen onDone={() => setBooted(true)} />}
+      {/* Boot screen — only after login */}
+      {user && !booted && !justLoggedIn && <BootScreen onDone={() => setBooted(true)} />}
+
+      {/* ACCESS GRANTED animation */}
+      {justLoggedIn && (
+        <div className="modal-overlay" style={{ zIndex: 9997, background: 'rgba(0,0,0,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', animation: 'authPanelIn .5s ease' }}>
+            <div style={{ width: 80, height: 80, borderRadius: '50%', border: '3px solid var(--neon-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 0 30px rgba(16,185,129,.4), inset 0 0 20px rgba(16,185,129,.1)', animation: 'pulse-cyan 1.5s infinite' }}>
+              <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--neon-emerald)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            </div>
+            <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 24, color: 'var(--neon-emerald)', letterSpacing: '.15em', marginBottom: 8, textShadow: '0 0 20px rgba(16,185,129,.5)' }}>ACCESS GRANTED</div>
+            <div style={{ fontFamily: 'Share Tech Mono', fontSize: 13, color: 'var(--text2)', marginBottom: 6 }}>
+              Welcome, {user?.name || 'Operative'}
+            </div>
+            <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', letterSpacing: '.08em' }}>
+              CLEARANCE LEVEL: AUTHORIZED
+            </div>
+            <button className="btn" style={{ marginTop: 24, padding: '10px 40px', fontSize: 13, letterSpacing: '.1em', borderColor: 'var(--neon-emerald)', color: 'var(--neon-emerald)' }}
+              onClick={() => { clearJustLoggedIn(); setBooted(false); }}>
+              PROCEED TO MISSION
+            </button>
+          </div>
+        </div>
+      )}
       <ParticleCanvas />
       <FxCanvas />
       <HudFrame />
@@ -337,7 +361,7 @@ export default function App() {
 
               {/* Image with scan effect */}
               <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
-                <img src={`${import.meta.env.BASE_URL}auth_asset.png`} alt="Identify" style={{ width: 150, height: 150, borderRadius: 12, border: '2px solid var(--neon-cyan)', objectFit: 'cover', boxShadow: '0 0 20px rgba(0,229,255,.2)' }} />
+                <img src={authAssetImg} alt="Identify" style={{ width: 150, height: 150, borderRadius: 12, border: '2px solid var(--neon-cyan)', objectFit: 'cover', boxShadow: '0 0 20px rgba(0,229,255,.2)' }} />
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 12, background: 'linear-gradient(180deg, transparent 0%, transparent 45%, rgba(0,229,255,.08) 50%, transparent 55%, transparent 100%)', backgroundSize: '100% 200%', animation: 'scanMove 3s linear infinite' }} />
                 <div style={{ position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%)', fontFamily: 'Share Tech Mono', fontSize: 9, color: 'var(--neon-cyan)', background: 'var(--bg3)', padding: '2px 8px', borderRadius: 4, border: '1px solid var(--border2)', letterSpacing: '.1em' }}>TARGET</div>
               </div>
@@ -372,22 +396,50 @@ export default function App() {
         </div>
       )}
 
-      {/* ═══ Login ═══ */}
+      {/* ═══ Login — Full screen cyberpunk ═══ */}
       {needsLogin && !needsPassphrase && (
-        <div className="modal-overlay" style={{ zIndex: 9998 }}>
-          <div className="modal-panel" style={{ width: 380, textAlign: 'center' }}>
-            <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 20, color: 'var(--neon-cyan)', letterSpacing: '.1em', marginBottom: 4 }}>SG MISSION</div>
-            <div style={{ fontFamily: 'Share Tech Mono', fontSize: 11, color: 'var(--text3)', marginBottom: 24, letterSpacing: '.08em' }}>AUTHENTICATION REQUIRED</div>
-            <button className="btn btn-primary" style={{ width: '100%', padding: '12px 20px', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
-              onClick={signInWithGoogle}>
-              <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-              Googleでログイン
-            </button>
+        <div className="login-screen">
+          {/* Scanline overlay */}
+          <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,255,.02) 2px, rgba(0,229,255,.02) 4px)', pointerEvents: 'none', zIndex: 1 }} />
+
+          {/* HUD corners */}
+          <div style={{ position: 'absolute', top: 20, left: 20, width: 40, height: 40, borderTop: '2px solid var(--neon-cyan)', borderLeft: '2px solid var(--neon-cyan)', opacity: .4 }} />
+          <div style={{ position: 'absolute', top: 20, right: 20, width: 40, height: 40, borderTop: '2px solid var(--neon-cyan)', borderRight: '2px solid var(--neon-cyan)', opacity: .4 }} />
+          <div style={{ position: 'absolute', bottom: 20, left: 20, width: 40, height: 40, borderBottom: '2px solid var(--neon-cyan)', borderLeft: '2px solid var(--neon-cyan)', opacity: .4 }} />
+          <div style={{ position: 'absolute', bottom: 20, right: 20, width: 40, height: 40, borderBottom: '2px solid var(--neon-cyan)', borderRight: '2px solid var(--neon-cyan)', opacity: .4 }} />
+
+          {/* Top bar */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, var(--neon-cyan), transparent)', opacity: .5 }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, var(--neon-cyan), transparent)', opacity: .3 }} />
+
+          <div className="login-content">
+            {/* Title */}
+            <div className="login-icon">
+              <span className="ic ic-xl" dangerouslySetInnerHTML={{ __html: ic('satellite') }} />
+            </div>
+            <div className="login-title">SG MISSION</div>
+            <div className="login-subtitle">SINGAPORE 2026 // OPERATIONS PLANNER</div>
+
+            {/* Terminal lines */}
+            <div className="login-terminal">
+              <div className="login-line l1">[SYS] Secure connection established</div>
+              <div className="login-line l2">[NET] Encryption: AES-256-GCM</div>
+              <div className="login-line l3">[AUTH] Awaiting operator credentials...</div>
+            </div>
+
+            {/* Login button */}
+            <div className="login-action">
+              <button className="btn btn-primary login-btn" onClick={signInWithGoogle}>
+                <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                AUTHENTICATE WITH GOOGLE
+              </button>
+            </div>
+
             {!isFirebaseConfigured && (
-              <>
-                <div style={{ margin: '16px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ marginTop: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                  <span style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)' }}>DEV MODE</span>
+                  <span style={{ fontFamily: 'Share Tech Mono', fontSize: 9, color: 'var(--text3)' }}>DEV MODE</span>
                   <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -395,11 +447,14 @@ export default function App() {
                     onChange={e => setLocalNameInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && localNameInput.trim()) signInLocal(localNameInput.trim()); }}
                     style={{ flex: 1, padding: '9px 11px', background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'Rajdhani', fontSize: 14 }} />
-                  <button className="btn" onClick={() => localNameInput.trim() && signInLocal(localNameInput.trim())}
-                    disabled={!localNameInput.trim()}>ENTER</button>
+                  <button className="btn" onClick={() => localNameInput.trim() && signInLocal(localNameInput.trim())} disabled={!localNameInput.trim()}>ENTER</button>
                 </div>
-              </>
+              </div>
             )}
+
+            <div className="login-footer">
+              CLASSIFIED // AUTHORIZED PERSONNEL ONLY
+            </div>
           </div>
         </div>
       )}
