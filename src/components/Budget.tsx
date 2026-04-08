@@ -221,7 +221,7 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
                       return (
                         <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
                           <span style={{ width: 10, height: 10, borderRadius: 2, background: colors[cat] || '#6b7280', flexShrink: 0, boxShadow: `0 0 4px ${colors[cat] || '#6b7280'}` }} />
-                          <span style={{ fontFamily: 'Rajdhani', fontSize: 14, fontWeight: 600, color: 'var(--text)', flex: 1 }}>{cat}</span>
+                          <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 13, color: 'var(--text)', flex: 1, letterSpacing: '.03em' }}>{cat}</span>
                           <span style={{ fontFamily: 'Orbitron, monospace', fontSize: 13, color: 'var(--neon-cyan)', minWidth: 55, textAlign: 'right', letterSpacing: '.02em' }}>{displayAmount(val)}</span>
                           <span style={{ fontFamily: 'Orbitron, monospace', fontSize: 13, fontWeight: 700, color: 'var(--text2)', minWidth: 38, textAlign: 'right' }}>{pct.toFixed(0)}%</span>
                         </div>

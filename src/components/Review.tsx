@@ -57,41 +57,44 @@ export function Review({ userName }: { userName?: string }) {
   const [editText, setEditText] = useState('');
   const [searchQuery, setSearchQuery] = useState(''); // 9-5
 
+  // Load from localStorage first as immediate state
   useEffect(() => {
-    if (isFirebaseConfigured && db) {
-      const revRef = ref(db, 'review_v2');
-      const unsub = onValue(revRef, (snap) => {
-        const val = snap.val();
-        if (!val) {
-          // First time: no data at all in Firebase — write defaults
-          const d = defaultReview();
-          set(revRef, d).catch(() => {});
-          setData(d);
-          return;
-        }
-        // Merge with defaults to handle missing/stripped fields
-        const merged = defaultReview();
-        if (val.dayTeams) {
-          Object.keys(val.dayTeams).forEach(k => {
-            if (merged.dayTeams[k]) {
-              const src = val.dayTeams[k] || {};
-              merged.dayTeams[k] = {
-                outcomes: ensureIds(src.outcomes),
-                improvements: ensureIds(src.improvements),
-                sharing: ensureIds(src.sharing),
-                freeText: ensureIds(src.freeText),
-              };
-            }
-          });
-        }
-        if (val.overall) merged.overall = ensureIds(val.overall);
-        setData(merged);
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
-      });
-      return () => unsub();
-    } else {
-      try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) setData(JSON.parse(saved)); } catch {}
-    }
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.dayTeams) setData(parsed);
+      }
+    } catch { /* */ }
+  }, []);
+
+  // Firebase sync
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db) return;
+    const revRef = ref(db, 'review_v2');
+    const unsub = onValue(revRef, (snap) => {
+      const val = snap.val();
+      if (!val) return; // No data in Firebase — keep local state, don't write empty defaults
+      // Merge Firebase data with defaults to handle missing/stripped fields
+      const merged = defaultReview();
+      if (val.dayTeams && typeof val.dayTeams === 'object') {
+        Object.keys(val.dayTeams).forEach(k => {
+          if (merged.dayTeams[k]) {
+            const src = val.dayTeams[k] || {};
+            merged.dayTeams[k] = {
+              outcomes: ensureIds(src.outcomes),
+              improvements: ensureIds(src.improvements),
+              sharing: ensureIds(src.sharing),
+              freeText: ensureIds(src.freeText),
+            };
+          }
+        });
+      }
+      if (val.overall) merged.overall = ensureIds(val.overall);
+      setData(merged);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
+    });
+    return () => unsub();
   }, []);
 
   const save = useCallback((newData: ReviewData) => {
