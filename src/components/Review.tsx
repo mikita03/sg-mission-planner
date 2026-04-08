@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ref, onValue, set } from 'firebase/database';
 import { db, isFirebaseConfigured } from '../firebase';
 import { DAYS, ic } from '../constants/categories';
+import { MdText } from './MarkdownField';
 
 interface ReviewEntry {
   text: string;
@@ -132,7 +133,7 @@ export function Review({ userName }: { userName?: string }) {
                 {new Date(e.timestamp).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
-            <div className="comment-text">{e.text}</div>
+            <div className="comment-text"><MdText text={e.text} /></div>
           </div>
         ))}
       </div>
@@ -262,7 +263,7 @@ export function Review({ userName }: { userName?: string }) {
                 <div className="comment-author"><span>{e.author}</span>
                   <span className="comment-time">{new Date(e.timestamp).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
-                <div className="comment-text">{e.text}</div>
+                <div className="comment-text"><MdText text={e.text} /></div>
               </div>
             ))}
           </div>

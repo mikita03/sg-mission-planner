@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Block, ParentCategory } from '../types';
 import { DAYS, getCatDisplay, ic, PARENT_CATEGORIES, PARENT_CATEGORY_KEYS } from '../constants/categories';
 import { m2t, t2m } from '../utils/time';
+import { MarkdownField } from './MarkdownField';
 
 type WizardStep = 'category' | 'details' | 'movement' | 'edit';
 
@@ -399,7 +400,7 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
 
               {/* Label + Memo */}
               <div className="drawer-field"><label>表示ラベル</label><input type="text" value={block.label} onChange={e => handleChange('label', e.target.value)} /></div>
-              <div className="drawer-field"><label>メモ</label><textarea value={block.memo} onChange={e => handleChange('memo', e.target.value)} /></div>
+              <MarkdownField label="メモ" value={block.memo} onChange={v => handleChange('memo', v)} placeholder="Markdown記法が使えます" />
 
               {/* Draft toggle */}
               {block.draft && (

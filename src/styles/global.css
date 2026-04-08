@@ -515,3 +515,44 @@ body{
 /* ═══ Top Resize Handle ═══ */
 .rh-top{position:absolute;top:0;left:0;right:0;height:6px;cursor:n-resize;z-index:3}
 .rh-top:hover{background:linear-gradient(180deg,#00e5ff30,transparent)}
+
+/* ═══ Markdown Preview ═══ */
+.md-preview{padding:8px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;line-height:1.7;overflow-wrap:break-word}
+.md-preview h1,.md-preview h2,.md-preview h3{font-family:'Rajdhani',sans-serif;color:var(--neon-cyan);margin:6px 0 4px;line-height:1.3}
+.md-preview h1{font-size:16px}.md-preview h2{font-size:14px}.md-preview h3{font-size:13px}
+.md-preview p{margin:4px 0}
+.md-preview ul,.md-preview ol{margin:4px 0;padding-left:20px}
+.md-preview li{margin:2px 0}
+.md-preview strong{color:var(--neon-cyan)}
+.md-preview code{background:var(--bg3);padding:1px 5px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--neon-amber)}
+.md-preview pre{background:var(--bg3);padding:8px;border-radius:var(--radius);overflow-x:auto}
+.md-preview pre code{background:none;padding:0}
+.md-preview blockquote{border-left:3px solid var(--neon-cyan);padding-left:10px;margin:4px 0;color:var(--text2)}
+.md-preview a{color:var(--neon-blue);text-decoration:none}.md-preview a:hover{text-decoration:underline}
+.md-empty{color:var(--text3);font-style:italic}
+.md-inline{padding:0;border:none;background:none}
+.md-inline p{margin:0}
+.md-toggle{background:none;border:1px solid var(--border);border-radius:var(--radius);padding:2px 8px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text3);cursor:pointer;letter-spacing:.05em;transition:all .15s}
+.md-toggle:hover{border-color:var(--neon-cyan);color:var(--neon-cyan)}
+
+/* ═══ Kanban Board ═══ */
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;min-height:300px}
+@media(max-width:900px){.kanban{grid-template-columns:repeat(2,1fr)}}
+.kanban-col{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:8px;display:flex;flex-direction:column;min-height:200px}
+.kanban-col-header{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.08em;padding:6px 8px;border-radius:var(--radius);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.kanban-col-header .count{font-size:10px;opacity:.6}
+.kanban-col.col-candidate .kanban-col-header{background:#64748b15;color:var(--text2)}
+.kanban-col.col-approaching .kanban-col-header{background:#f59e0b12;color:var(--neon-amber)}
+.kanban-col.col-confirmed .kanban-col-header{background:#10b98112;color:var(--neon-emerald)}
+.kanban-col.col-cancelled .kanban-col-header{background:#ef444410;color:var(--neon-red)}
+.kanban-cards{flex:1;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:60vh}
+.kanban-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;cursor:pointer;transition:all .15s;position:relative}
+.kanban-card:hover{border-color:var(--neon-cyan);box-shadow:0 0 8px #00e5ff10}
+.kanban-card.selected{border-color:var(--neon-cyan);box-shadow:0 0 12px #00e5ff20}
+.kanban-card-company{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.kanban-card-company .pri-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.kanban-card-tags{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:3px}
+.kanban-card-tags span{font-family:'Share Tech Mono',monospace;font-size:8px;padding:1px 5px;border-radius:6px;background:var(--bg3);color:var(--text2)}
+.kanban-card-info{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text3);display:flex;gap:8px}
+.kanban-card-schedule{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--neon-cyan);margin-top:3px}
+.kanban-drop-zone{min-height:40px;border:2px dashed var(--border);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3);font-family:'Share Tech Mono',monospace;opacity:.4;margin-top:auto}
