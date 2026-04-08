@@ -137,7 +137,7 @@ body{
 .ch-day .dl{font-family:'Orbitron',monospace;font-size:14px;font-weight:600;color:var(--neon-cyan);text-shadow:0 0 6px #00e5ff30;letter-spacing:.08em}
 .ch-day .dn{font-size:12px;color:var(--text2);margin-top:3px}
 .ch-day .tr{display:grid;grid-template-columns:1fr 1fr;margin-top:5px;font-size:12px;color:var(--text2);font-weight:600;letter-spacing:.1em}
-.cal-body-wrap{max-height:75vh;overflow-y:auto;scroll-behavior:smooth}
+.cal-body-wrap{max-height:75vh;overflow-y:auto;scroll-behavior:smooth;position:relative;z-index:42}
 .cal-body{display:grid;grid-template-columns:54px 1fr 1fr;position:relative}
 
 .tc{border-right:1px solid var(--border);position:relative;background:linear-gradient(180deg,var(--bg3),var(--bg))}
@@ -761,7 +761,7 @@ body{
 /* ═══ Phase 7: UX Improvements ═══ */
 
 /* 7-1: Snap guide lines */
-.snap-guide{position:absolute;left:0;right:0;height:1px;background:var(--neon-amber);opacity:.5;z-index:30;pointer-events:none;box-shadow:0 0 4px var(--neon-amber)}
+.snap-guide{position:absolute;left:0;right:0;height:2px;background:var(--neon-amber);opacity:.8;z-index:45;pointer-events:none;box-shadow:0 0 6px var(--neon-amber),0 0 12px rgba(255,176,0,.3)}
 
 /* 7-2: Paste banner */
 .paste-banner{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:8px;background:linear-gradient(135deg,rgba(0,229,255,.08),rgba(168,85,247,.06));border:1px solid var(--neon-cyan);border-radius:var(--radius);font-family:Share Tech Mono,monospace;font-size:12px;color:var(--neon-cyan);animation:fadeIn .3s ease}
