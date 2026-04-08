@@ -15,6 +15,8 @@ import { Review } from './components/Review';
 import { CovertExport } from './components/CovertExport';
 import { TeamRosterPanel } from './components/TeamRoster';
 import { TravelDays } from './components/TravelDays';
+import { isFirebaseConfigured, db } from './firebase';
+import { ref, onValue } from 'firebase/database';
 
 const MISSION_START = new Date('2026-05-18T00:00:00+08:00');
 
@@ -35,6 +37,26 @@ export default function App() {
   const [sgtTime, setSgtTime] = useState('--:--:--');
   const [sgtDate, setSgtDate] = useState('----.--.--');
   const [countdown, setCountdown] = useState('--d --h --m');
+
+  // Background sync: Firebase → localStorage for all data (ensures PDF has data)
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db) return;
+    const syncs = [
+      { path: 'budget', key: 'sg_mission_budget' },
+      { path: 'review_v2', key: 'sg_mission_review_v2' },
+      { path: 'roster', key: 'sg_mission_roster' },
+      { path: 'travel', key: 'sg_mission_travel' },
+    ];
+    const unsubs = syncs.map(({ path, key }) =>
+      onValue(ref(db!, path), (snap) => {
+        const val = snap.val();
+        if (val) {
+          try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* */ }
+        }
+      })
+    );
+    return () => unsubs.forEach(u => u());
+  }, []);
 
   useEffect(() => {
     function tick() {
