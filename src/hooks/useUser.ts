@@ -11,7 +11,30 @@ export interface UserInfo {
 }
 
 const NICKNAME_KEY = 'sg_mission_nickname';
-const VALID_ANSWERS = ['アンディーくん','アンディー','アンディ','＆aiくん','＆ai','&aiくん','&ai','andy','アンデイー','アンデイ'];
+const VALID_ANSWERS = [
+  // 基本形
+  'アンディーくん','アンディー','アンディ','アンディくん',
+  // 君表記
+  'アンディー君','アンディ君',
+  // カタカナくん
+  'アンディークン','アンディクン',
+  // デイ表記（小文字ィ忘れ）
+  'アンデイー','アンデイ','アンデイーくん','アンデイくん','アンデイー君','アンデイ君',
+  // ＆AI系（全角）
+  '＆ai','＆aiくん','＆ai君',
+  // &AI系（半角）
+  '&ai','&aiくん','&ai君',
+  // 英語
+  'andy','andykun','andychan','andysan',
+  // ローマ字風
+  'andii','andi',
+  // 全角英字
+  '＆ａｉ','ａｎｄｙ',
+  // ちゃん・さん付け
+  'アンディーちゃん','アンディちゃん','アンディーさん','アンディさん',
+  // ひらがな
+  'あんでぃー','あんでぃ','あんでぃーくん','あんでぃくん',
+];
 
 function normalizeAnswer(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, '');
