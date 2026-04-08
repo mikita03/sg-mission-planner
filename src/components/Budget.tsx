@@ -18,6 +18,7 @@ interface BudgetItem {
   unitPrice: number;
   quantity: number;
   currency: 'SGD' | 'JPY';
+  actual: number; // 9-1: actual spend
 }
 
 interface BudgetData {
@@ -36,12 +37,12 @@ function bid() { return 'bud' + (++_idC).toString(36); }
 
 function defaultItems(): BudgetItem[] {
   return [
-    { id: bid(), category: 'フライト', name: '往復航空券（1名）', unitPrice: 800, quantity: 4, currency: 'SGD' },
-    { id: bid(), category: '宿泊', name: 'ホテル（1泊1室）', unitPrice: 200, quantity: 8, currency: 'SGD' },
-    { id: bid(), category: 'タクシー', name: 'Grab（1回平均）', unitPrice: 15, quantity: 16, currency: 'SGD' },
-    { id: bid(), category: 'MRT/交通', name: 'MRT（1回平均）', unitPrice: 2, quantity: 20, currency: 'SGD' },
-    { id: bid(), category: 'ランチ', name: 'ランチ（1名1食）', unitPrice: 15, quantity: 16, currency: 'SGD' },
-    { id: bid(), category: 'ディナー', name: 'ディナー（1名1食）', unitPrice: 50, quantity: 16, currency: 'SGD' },
+    { id: bid(), category: 'フライト', name: '往復航空券（1名）', unitPrice: 800, quantity: 4, currency: 'SGD', actual: 0 },
+    { id: bid(), category: '宿泊', name: 'ホテル（1泊1室）', unitPrice: 200, quantity: 8, currency: 'SGD', actual: 0 },
+    { id: bid(), category: 'タクシー', name: 'Grab（1回平均）', unitPrice: 15, quantity: 16, currency: 'SGD', actual: 0 },
+    { id: bid(), category: 'MRT/交通', name: 'MRT（1回平均）', unitPrice: 2, quantity: 20, currency: 'SGD', actual: 0 },
+    { id: bid(), category: 'ランチ', name: 'ランチ（1名1食）', unitPrice: 15, quantity: 16, currency: 'SGD', actual: 0 },
+    { id: bid(), category: 'ディナー', name: 'ディナー（1名1食）', unitPrice: 50, quantity: 16, currency: 'SGD', actual: 0 },
   ];
 }
 
@@ -77,7 +78,7 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
   }, [data, save]);
 
   const addItem = useCallback(() => {
-    save({ ...data, items: [...data.items, { id: bid(), category: 'その他', name: '', unitPrice: 0, quantity: 1, currency: 'SGD' }] });
+    save({ ...data, items: [...data.items, { id: bid(), category: 'その他', name: '', unitPrice: 0, quantity: 1, currency: 'SGD', actual: 0 }] });
   }, [data, save]);
 
   const removeItem = useCallback((id: string) => {
@@ -91,7 +92,16 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
   }, [data.rateJPY]);
 
   const total = useMemo(() => data.items.reduce((s, item) => s + toSGD(item), 0), [data.items, toSGD]);
+  const actualTotal = useMemo(() => data.items.reduce((s, item) => s + (item.actual || 0), 0), [data.items]);
+  const variance = total - actualTotal;
   const isOverBudget = data.budgetLimit > 0 && total > data.budgetLimit;
+
+  // 9-2: Dual currency display
+  const dualAmount = useCallback((sgd: number) => {
+    const s = `S$${sgd.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+    const j = `¥${Math.round(sgd * data.rateJPY).toLocaleString()}`;
+    return displayCurrency === 'SGD' ? <>{s} <span style={{ fontSize: '0.65em', color: 'var(--text3)' }}>({j})</span></> : <>{j} <span style={{ fontSize: '0.65em', color: 'var(--text3)' }}>({s})</span></>;
+  }, [displayCurrency, data.rateJPY]);
 
   // 8-4: Countup animation
   const [displayTotal, setDisplayTotal] = useState(0);
@@ -163,36 +173,55 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
 
       {/* Summary Cards */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div className="info-card" style={{ flex: 1, minWidth: 140 }}>
-          <div className="info-label">TOTAL</div>
-          <div className="countup" style={{ fontFamily: 'Orbitron, monospace', fontSize: 24, fontWeight: 700, color: isOverBudget ? 'var(--neon-red)' : 'var(--neon-cyan)', textShadow: `0 0 10px ${isOverBudget ? '#ef444440' : '#00e5ff40'}`, letterSpacing: '.04em', marginTop: 4 }}>
-            {displayAmount(displayTotal)}
+        <div className="info-card" style={{ flex: 1, minWidth: 130 }}>
+          <div className="info-label">BUDGET</div>
+          <div className="countup" style={{ fontFamily: 'Orbitron, monospace', fontSize: 22, fontWeight: 700, color: isOverBudget ? 'var(--neon-red)' : 'var(--neon-cyan)', textShadow: `0 0 10px ${isOverBudget ? '#ef444440' : '#00e5ff40'}`, letterSpacing: '.04em', marginTop: 4 }}>
+            {dualAmount(displayTotal)}
           </div>
+          <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>÷4 = {displayAmount(displayTotal / 4)}/人</div>
         </div>
-        <div className="info-card" style={{ flex: 1, minWidth: 140 }}>
-          <div className="info-label">PER PERSON (÷4)</div>
-          <div className="countup" style={{ fontFamily: 'Orbitron, monospace', fontSize: 24, fontWeight: 700, color: 'var(--neon-cyan)', textShadow: '0 0 10px #00e5ff40', letterSpacing: '.04em', marginTop: 4 }}>
-            {displayAmount(displayTotal / 4)}
+        <div className="info-card" style={{ flex: 1, minWidth: 130 }}>
+          <div className="info-label">ACTUAL</div>
+          <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 22, fontWeight: 700, color: actualTotal > 0 ? 'var(--neon-emerald)' : 'var(--text3)', textShadow: actualTotal > 0 ? '0 0 10px #10b98140' : 'none', letterSpacing: '.04em', marginTop: 4 }}>
+            {dualAmount(actualTotal)}
           </div>
+          {actualTotal > 0 && (
+            <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: variance >= 0 ? 'var(--neon-emerald)' : 'var(--neon-red)', marginTop: 2 }}>
+              差異: {variance >= 0 ? '▼' : '▲'}{displayAmount(Math.abs(variance))}
+            </div>
+          )}
         </div>
         <div className="info-card" style={{ flex: 2, minWidth: 220 }}>
           <div className="info-label">BY CATEGORY</div>
-          <div style={{ marginTop: 8 }}>
-            {Object.entries(catTotals).map(([cat, val]) => {
-              const pct = total > 0 ? (val / total * 100) : 0;
-              const barClass = ['フライト','MRT/交通','タクシー'].includes(cat) ? 'cat-transport'
-                : cat === '宿泊' ? 'cat-stay'
-                : ['ランチ','ディナー'].includes(cat) ? 'cat-food' : 'cat-other';
-              return (
-                <div key={cat} style={{ marginBottom: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'Rajdhani, sans-serif', fontSize: 13, fontWeight: 600, color: 'var(--text2)' }}>
+          <div style={{ display: 'flex', gap: 16, marginTop: 8, alignItems: 'center' }}>
+            {/* 9-3: Donut Chart */}
+            <svg viewBox="0 0 100 100" width="90" height="90" style={{ flexShrink: 0 }}>
+              {(() => {
+                const entries = Object.entries(catTotals).filter(([, v]) => v > 0);
+                let offset = 0;
+                const colors: Record<string, string> = { 'フライト': '#3d8bfd', 'MRT/交通': '#60a5fa', 'タクシー': '#818cf8', '宿泊': '#a855f7', 'ランチ': '#f59e0b', 'ディナー': '#ef4444', '会議室': '#10b981', '通信費': '#06b6d4', 'その他': '#6b7280' };
+                return entries.map(([cat, val]) => {
+                  const pct = total > 0 ? val / total : 0;
+                  const dash = pct * 251.2;
+                  const gap = 251.2 - dash;
+                  const el = <circle key={cat} cx="50" cy="50" r="40" fill="none" stroke={colors[cat] || '#6b7280'} strokeWidth="12" strokeDasharray={`${dash} ${gap}`} strokeDashoffset={-offset} transform="rotate(-90 50 50)" style={{ filter: `drop-shadow(0 0 3px ${colors[cat] || '#6b7280'})` }} />;
+                  offset += dash;
+                  return el;
+                });
+              })()}
+              <text x="50" y="53" textAnchor="middle" fill="var(--neon-cyan)" fontFamily="Orbitron" fontSize="12" fontWeight="700">{displayAmount(total).replace(/S\$|¥/,'')}</text>
+            </svg>
+            <div style={{ flex: 1, fontSize: 11 }}>
+              {Object.entries(catTotals).map(([cat, val]) => {
+                const pct = total > 0 ? (val / total * 100) : 0;
+                return (
+                  <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'Rajdhani', fontWeight: 600, color: 'var(--text2)', lineHeight: 1.8 }}>
                     <span>{cat}</span>
-                    <span style={{ fontFamily: 'Orbitron, monospace', fontSize: 13, color: 'var(--neon-cyan)' }}>{displayAmount(val)}</span>
+                    <span style={{ fontFamily: 'Share Tech Mono', fontSize: 11, color: 'var(--text3)' }}>{pct.toFixed(0)}%</span>
                   </div>
-                  <div className="neon-bar-track"><div className={`neon-bar-fill ${barClass}`} style={{ width: `${pct}%` }} /></div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -209,6 +238,7 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
               <th style={{ width: 65, fontSize: 11 }}>CUR.</th>
               <th style={{ width: 65, fontSize: 11 }}>QTY</th>
               <th style={{ width: 120, fontSize: 11 }}>SUBTOTAL</th>
+              <th style={{ width: 100, fontSize: 11 }}>ACTUAL</th>
               <th style={{ width: 40 }}></th>
             </tr>
           </thead>
@@ -243,6 +273,11 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
                   {displayAmount(toSGD(item))}
                 </td>
                 <td>
+                  <input type="text" inputMode="decimal" value={item.actual || ''} placeholder="—"
+                    onChange={e => updateItem(item.id, 'actual', toNum(e.target.value))}
+                    style={{ ...inputStyle, width: '100%', textAlign: 'right' as const, color: (item.actual || 0) > toSGD(item) ? 'var(--neon-red)' : 'var(--neon-emerald)' }} />
+                </td>
+                <td>
                   <button onClick={() => removeItem(item.id)}
                     style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 6 }}
                     onMouseEnter={e => (e.currentTarget.style.color = 'var(--neon-red)')}
@@ -260,6 +295,9 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
               </td>
               <td style={{ fontFamily: 'Orbitron, monospace', fontSize: 20, fontWeight: 700, color: 'var(--neon-cyan)', textAlign: 'right', textShadow: '0 0 8px #00e5ff30', padding: '12px 10px' }}>
                 {displayAmount(total)}
+              </td>
+              <td style={{ fontFamily: 'Orbitron, monospace', fontSize: 16, fontWeight: 700, color: actualTotal > 0 ? 'var(--neon-emerald)' : 'var(--text3)', textAlign: 'right', padding: '12px 10px' }}>
+                {actualTotal > 0 ? displayAmount(actualTotal) : '—'}
               </td>
               <td></td>
             </tr>

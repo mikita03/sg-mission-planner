@@ -64,6 +64,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
   const [tagInput, setTagInput] = useState('');
   const [tagPresets, setTagPresets] = useState<string[]>(loadTags);
   const [searchQuery, setSearchQuery] = useState('');
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set()); // 9-8
   const dragRef = useRef<{ id: string; fromStatus: string } | null>(null);
 
   // Firebase sync
@@ -140,6 +141,17 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
     showToast('SCHEDULED');
   }, [candidates, onAddBlock, updateCandidate]);
 
+  // 9-8: Bulk status change
+  const toggleCheck = useCallback((id: string) => {
+    setCheckedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  }, []);
+  const bulkSetStatus = useCallback((status: VisitCandidate['status']) => {
+    const updated = candidates.map(c => checkedIds.has(c.id) ? { ...c, status } : c);
+    save(updated);
+    setCheckedIds(new Set());
+    showToast(`${checkedIds.size} 件を ${status.toUpperCase()} に変更`);
+  }, [candidates, checkedIds, save]);
+
   // Drag & drop between columns + reorder
   function onCardDragStart(e: React.DragEvent, id: string, status: string) {
     dragRef.current = { id, fromStatus: status };
@@ -209,6 +221,17 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
         />
       </div>
 
+      {/* 9-8: Bulk Action Bar */}
+      {checkedIds.size > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '8px 12px', background: 'linear-gradient(135deg,rgba(0,229,255,.08),rgba(0,229,255,.03))', border: '1px solid var(--neon-cyan)', borderRadius: 'var(--radius)', fontFamily: 'Share Tech Mono', fontSize: 12, color: 'var(--neon-cyan)', animation: 'fadeIn .2s ease' }}>
+          <span>{checkedIds.size} 件選択</span>
+          {COLUMNS.map(col => (
+            <button key={col.key} className="btn" style={{ padding: '3px 10px', fontSize: 11 }} onClick={() => bulkSetStatus(col.key)}>{col.label}</button>
+          ))}
+          <button className="btn" style={{ padding: '3px 10px', fontSize: 11 }} onClick={() => setCheckedIds(new Set())}>CLEAR</button>
+        </div>
+      )}
+
       {/* Kanban Board */}
       <div className="kanban">
         {COLUMNS.map(col => {
@@ -239,6 +262,9 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                       onDrop={e => { e.currentTarget.classList.remove('drag-over'); onCardDrop(e, c.id, col.key); }}
                       onClick={() => { setSelectedId(selectedId === c.id ? null : c.id); setEditMode(false); }}>
                       <div className="kanban-card-company">
+                        <input type="checkbox" checked={checkedIds.has(c.id)} onChange={() => toggleCheck(c.id)}
+                          onClick={e => e.stopPropagation()}
+                          style={{ marginRight: 6, accentColor: 'var(--neon-cyan)', cursor: 'pointer' }} />
                         <span className="pri-dot" style={{ background: p.color }} />
                         {c.company || '（未入力）'}
                       </div>

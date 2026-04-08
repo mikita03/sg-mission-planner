@@ -11,7 +11,8 @@ interface ReviewEntry {
   text: string;
   author: string;
   timestamp: number;
-  reactions?: Record<string, string[]>; // emoji → [userName, ...]
+  reactions?: Record<string, string[]>;
+  pinned?: boolean; // 9-4
 }
 
 interface DayTeamReview {
@@ -53,6 +54,7 @@ export function Review({ userName }: { userName?: string }) {
   const [previews, setPreviews] = useState<Record<string, boolean>>({});
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const [searchQuery, setSearchQuery] = useState(''); // 9-5
 
   useEffect(() => {
     if (isFirebaseConfigured && db) {
@@ -163,6 +165,44 @@ export function Review({ userName }: { userName?: string }) {
     }) });
   }, [data, save, userName]);
 
+  // 9-4: Pin toggle
+  const pinEntry = useCallback((dayTeamKey: string, field: keyof DayTeamReview, entryId: string) => {
+    const dt = data.dayTeams[dayTeamKey] || emptyDayTeamReview();
+    const updated = (dt[field] || []).map((e: ReviewEntry) => e.id === entryId ? { ...e, pinned: !e.pinned } : e);
+    save({ ...data, dayTeams: { ...data.dayTeams, [dayTeamKey]: { ...dt, [field]: updated } } });
+  }, [data, save]);
+
+  const pinOverall = useCallback((entryId: string) => {
+    save({ ...data, overall: data.overall.map(e => e.id === entryId ? { ...e, pinned: !e.pinned } : e) });
+  }, [data, save]);
+
+  // 9-6: Markdown export
+  function exportMarkdown() {
+    let md = '# SG Mission Review 2026\n\n';
+    DAYS.forEach(day => {
+      md += `## ${day.label}\n\n`;
+      (['A', 'B'] as const).forEach(team => {
+        const dt = data.dayTeams[`${day.key}_${team}`];
+        if (!dt) return;
+        md += `### Team ${team}\n\n`;
+        FIELDS.forEach(f => {
+          const entries = ensureIds(dt[f.key] || []);
+          if (entries.length === 0) return;
+          md += `#### ${f.label}\n\n`;
+          entries.forEach(e => { md += `- **${e.author}**: ${e.text}\n`; });
+          md += '\n';
+        });
+      });
+    });
+    if (data.overall.length > 0) {
+      md += `## Overall\n\n`;
+      data.overall.forEach(e => { md += `- **${e.author}**: ${e.text}\n`; });
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
+    a.download = 'SG_MISSION_REVIEW_2026.md'; a.click();
+  }
+
   const FIELDS: { key: keyof DayTeamReview; label: string; placeholder: string; icon: string }[] = [
     { key: 'outcomes', label: '成果・所感', placeholder: '訪問先での成果、得られた情報、印象など\nMarkdown対応（**太字**, - リスト）', icon: 'target' },
     { key: 'improvements', label: '改善点', placeholder: '次回への申し送り、改善すべきこと', icon: 'edit' },
@@ -182,19 +222,26 @@ export function Review({ userName }: { userName?: string }) {
     onDelete: (id: string) => void,
     onEdit: (id: string, text: string) => void,
     onReaction: (id: string, emoji: string) => void,
+    onPin: (id: string) => void,
     borderColor = 'var(--neon-cyan)',
   ) {
-    if (entries.length === 0) return null;
+    // 9-5: Filter by search + 9-4: Sort pinned first
+    const q = searchQuery.toLowerCase().trim();
+    const filtered = entries
+      .filter(e => !q || e.text.toLowerCase().includes(q) || e.author.toLowerCase().includes(q))
+      .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+    if (filtered.length === 0) return null;
     const me = userName || 'Anonymous';
 
     return (
       <div style={{ marginBottom: 8 }}>
-        {entries.map(e => {
+        {filtered.map(e => {
           const isEditing = editingEntryId === e.id;
           const reactions = e.reactions || {};
 
           return (
-            <div key={e.id || e.timestamp} className="comment-item review-entry" style={{ borderLeftColor: borderColor, position: 'relative', animationDelay: `${0.05 * entries.indexOf(e)}s` }}>
+            <div key={e.id || e.timestamp} className="comment-item review-entry" style={{ borderLeftColor: e.pinned ? 'var(--neon-amber)' : borderColor, position: 'relative', animationDelay: `${0.05 * filtered.indexOf(e)}s` }}>
+              {e.pinned && <span style={{ position: 'absolute', top: 4, right: 8, fontSize: 10, color: 'var(--neon-amber)' }}>📌</span>}
               {/* Header */}
               <div className="comment-author">
                 <span>{e.author}</span>
@@ -202,6 +249,11 @@ export function Review({ userName }: { userName?: string }) {
                   <span className="comment-time">
                     {new Date(e.timestamp).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </span>
+                  <button onClick={() => onPin(e.id)}
+                    style={{ background: 'none', border: 'none', color: e.pinned ? 'var(--neon-amber)' : 'var(--text3)', cursor: 'pointer', fontSize: 10, padding: '0 2px', opacity: e.pinned ? 1 : 0.5, transition: 'opacity .15s' }}
+                    onMouseEnter={ev => (ev.currentTarget.style.opacity = '1')}
+                    onMouseLeave={ev => (ev.currentTarget.style.opacity = e.pinned ? '1' : '0.5')}
+                    title="ピン留め">📌</button>
                   <button onClick={() => { setEditingEntryId(e.id); setEditText(e.text); }}
                     style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 10, padding: '0 2px', opacity: 0.5, transition: 'opacity .15s' }}
                     onMouseEnter={ev => (ev.currentTarget.style.opacity = '1')}
@@ -319,12 +371,51 @@ export function Review({ userName }: { userName?: string }) {
     );
   }
 
+  // 9-6: Markdown export
+  function exportMarkdown() {
+    let md = '# SG MISSION REVIEW 2026\n\n';
+    DAYS.forEach(day => {
+      md += `## ${day.label} — ${day.desc}\n\n`;
+      (['A', 'B'] as const).forEach(team => {
+        const dt = data.dayTeams[`${day.key}_${team}`];
+        if (!dt) return;
+        md += `### Team ${team}\n\n`;
+        const FIELDS: { key: keyof DayTeamReview; label: string }[] = [
+          { key: 'outcomes', label: '成果' }, { key: 'improvements', label: '改善' },
+          { key: 'sharing', label: '共有' }, { key: 'freeText', label: '自由記入' },
+        ];
+        FIELDS.forEach(f => {
+          const entries = ensureIds(dt[f.key] || []);
+          if (entries.length === 0) return;
+          md += `#### ${f.label}\n\n`;
+          entries.forEach(e => { md += `- ${e.text} *(${e.author})*\n`; });
+          md += '\n';
+        });
+      });
+    });
+    if (data.overall.length > 0) {
+      md += `## Overall\n\n`;
+      ensureIds(data.overall).forEach(e => { md += `- ${e.text} *(${e.author})*\n`; });
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
+    a.download = 'SG_MISSION_REVIEW.md'; a.click();
+  }
+
   return (
     <div style={{ animation: 'fadeIn .4s ease' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <div style={{ fontFamily: 'Orbitron, monospace', fontSize: 15, color: 'var(--neon-cyan)', letterSpacing: '.08em' }}>MISSION REVIEW</div>
-        {userName && <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 11, color: 'var(--text3)' }}>Posting as {userName}</div>}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {userName && <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 11, color: 'var(--text3)' }}>{userName}</span>}
+          <button className="btn" style={{ fontSize: 11, padding: '4px 10px' }} onClick={exportMarkdown}>
+            <span className="ic ic-sm" dangerouslySetInnerHTML={{ __html: ic('download') }} /> MD
+          </button>
+        </div>
       </div>
+      {/* 9-5: Search */}
+      <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+        placeholder="投稿を検索..." style={{ width: '100%', marginBottom: 10, padding: '6px 10px', background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'Rajdhani', fontSize: 13 }} />
 
       {DAYS.map(day => {
         const isExpanded = expandedDay === day.key;
@@ -382,6 +473,7 @@ export function Review({ userName }: { userName?: string }) {
                         (id) => deleteEntry(dtKey, f.key, id),
                         (id, text) => editEntry(dtKey, f.key, id, text),
                         (id, emoji) => toggleReaction(dtKey, f.key, id, emoji),
+                        (id) => pinEntry(dtKey, f.key, id),
                       )}
                       {renderInput(inputKey, f.placeholder, (text) => addEntry(dtKey, f.key, text))}
                     </div>
@@ -400,7 +492,7 @@ export function Review({ userName }: { userName?: string }) {
           <span className="ic" dangerouslySetInnerHTML={{ __html: ic('clipboard') }} />
           OVERALL MISSION REVIEW
         </label>
-        {renderEntries(ensureIds(data.overall), deleteOverall, editOverall, toggleOverallReaction, 'var(--neon-purple)')}
+        {renderEntries(ensureIds(data.overall), deleteOverall, editOverall, toggleOverallReaction, pinOverall, 'var(--neon-purple)')}
         {renderInput('overall', '出張全体の振り返り、次のアクション\nMarkdown対応', addOverall)}
       </div>
     </div>
