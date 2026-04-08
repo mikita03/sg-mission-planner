@@ -38,7 +38,7 @@ export function useUser() {
       if (!val) return false;
       const emails: string[] = Array.isArray(val) ? val : Object.values(val);
       return emails.some(e => e.toLowerCase() === email.toLowerCase());
-    } catch { return true; }
+    } catch { return false; }
   }
 
   async function registerUser(email: string) {
