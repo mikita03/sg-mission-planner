@@ -579,5 +579,12 @@ body{
 
 /* ═══ Review Reactions — hover to show picker ═══ */
 .review-reactions{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;align-items:center;min-height:4px}
-.reaction-picker-toggle{display:none;gap:2px;align-items:center}
-.comment-item:hover .reaction-picker-toggle{display:inline-flex}
+.reaction-picker-toggle{display:inline-flex;gap:2px;align-items:center;opacity:0;transform:translateY(4px) scale(0.8);transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
+.comment-item:hover .reaction-picker-toggle{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+.reaction-picker-toggle button{transition:all .2s cubic-bezier(.34,1.56,.64,1)!important}
+.reaction-picker-toggle button:hover{transform:scale(1.4)!important;filter:drop-shadow(0 0 6px #00e5ff60)!important}
+@keyframes reactionPop{0%{transform:scale(0);opacity:0}50%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
+.review-reactions button{animation:reactionPop .25s cubic-bezier(.34,1.56,.64,1)}
+/* Edit/delete buttons also hover-only */
+.comment-item .comment-author div{opacity:0;transition:opacity .2s}
+.comment-item:hover .comment-author div{opacity:1}

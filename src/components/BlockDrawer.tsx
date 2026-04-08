@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Block, ParentCategory } from '../types';
 import { DAYS, getCatDisplay, ic, PARENT_CATEGORIES, PARENT_CATEGORY_KEYS } from '../constants/categories';
 import { m2t, t2m } from '../utils/time';
-import { MarkdownField } from './MarkdownField';
+import { MarkdownField, MdText } from './MarkdownField';
 
 type WizardStep = 'category' | 'details' | 'movement' | 'edit';
 
@@ -422,17 +422,22 @@ export function BlockDrawer({ block, open, wizardMode, userName, hasAdjacentMove
                         <div className="comment-author"><span>{c.author}</span>
                           <span className="comment-time">{new Date(c.timestamp).toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
                         </div>
-                        <div className="comment-text">{c.text}</div>
+                        <div className="comment-text"><MdText text={c.text} /></div>
                       </div>
                     ))}
                   </div>
                 )}
-                <div className="comment-input-wrap">
-                  <input className="comment-input" type="text" value={commentText}
-                    placeholder={`${userName || 'You'} としてコメント...`}
+                <div className="comment-input-wrap" style={{ flexDirection: 'column', gap: 4 }}>
+                  <textarea className="comment-input"
+                    style={{ width: '100%', minHeight: 40, resize: 'vertical', fontFamily: 'Rajdhani, sans-serif', fontSize: 13 }}
+                    value={commentText}
+                    placeholder={`${userName || 'You'} としてコメント... (Markdown対応)`}
                     onChange={e => setCommentText(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSendComment(); }} />
-                  <button className="comment-send" onClick={handleSendComment} disabled={!commentText.trim()}>SEND</button>
+                    onKeyDown={e => { if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); handleSendComment(); } }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'Share Tech Mono', fontSize: 9, color: 'var(--text3)' }}>Shift+Enter: 投稿 / Markdown対応</span>
+                    <button className="comment-send" onClick={handleSendComment} disabled={!commentText.trim()}>SEND</button>
+                  </div>
                 </div>
               </div>
 
