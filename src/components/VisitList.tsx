@@ -45,7 +45,14 @@ const PRIORITY_OPTIONS = [
 ];
 
 function loadCandidates(): VisitCandidate[] {
-  try { const s = localStorage.getItem(STORAGE_KEY); if (s) return JSON.parse(s); } catch {} return [];
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) {
+      const p = JSON.parse(s);
+      const arr = Array.isArray(p) ? p : Object.values(p);
+      return (arr as any[]).filter(Boolean).map((c: any) => ({ ...c, tags: Array.isArray(c.tags) ? c.tags : [], mapUrl: c.mapUrl || '' }));
+    }
+  } catch {} return [];
 }
 function loadTags(): string[] {
   try { const s = localStorage.getItem(TAG_STORAGE_KEY); if (s) { const p = JSON.parse(s); if (Array.isArray(p) && p.length) return p; } } catch {} return [...DEFAULT_TAGS];
@@ -77,7 +84,12 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
       onValue(ref(db, 'visit_candidates'), (snap) => {
         const val = snap.val();
         if (val) {
-          const arr = Object.values(val) as VisitCandidate[];
+          const raw = Array.isArray(val) ? val : Object.values(val);
+          const arr = (raw as any[]).filter(Boolean).map((c: any) => ({
+            ...c,
+            tags: Array.isArray(c.tags) ? c.tags : c.tags ? Object.values(c.tags) : [],
+            mapUrl: c.mapUrl || '',
+          })) as VisitCandidate[];
           setCandidates(arr);
           try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); } catch {}
         }
@@ -249,7 +261,7 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
             if (c.status !== col.key) return false;
             if (!q) return true;
             return c.company.toLowerCase().includes(q) || c.location.toLowerCase().includes(q)
-              || c.assignee.toLowerCase().includes(q) || c.tags.some(t => t.toLowerCase().includes(q));
+              || c.assignee.toLowerCase().includes(q) || ((c.tags||[]) as string[]).some(t => t.toLowerCase().includes(q));
           }).sort((a, b) => (a.sortOrder || a.createdAt) - (b.sortOrder || b.createdAt));
           return (
             <div key={col.key} className={`kanban-col ${col.cls}`}
@@ -279,9 +291,9 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                         <span className="pri-dot" style={{ background: p.color }} />
                         {c.company || '（未入力）'}
                       </div>
-                      {c.tags.length > 0 && (
+                      {(c.tags||[]).length > 0 && (
                         <div className="kanban-card-tags">
-                          {c.tags.map(t => <span key={t}>{t}</span>)}
+                          {((c.tags||[]) as string[]).map(t => <span key={t}>{t}</span>)}
                         </div>
                       )}
                       {c.location && <div className="kanban-card-info">
@@ -318,9 +330,9 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                   <div style={{ fontFamily: 'Rajdhani', fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>
                     {selected.company || '（未入力）'}
                   </div>
-                  {selected.tags.length > 0 && (
+                  {(selected.tags||[]).length > 0 && (
                     <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                      {selected.tags.map(t => (
+                      {((selected.tags||[]) as string[]).map(t => (
                         <span key={t} style={{ fontFamily: 'Share Tech Mono', fontSize: 9, padding: '2px 6px', borderRadius: 8, background: 'var(--bg3)', color: 'var(--text2)' }}>{t}</span>
                       ))}
                     </div>
@@ -465,9 +477,9 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                   {tagPresets.map(tag => (
                     <span key={tag} style={{ position: 'relative', display: 'inline-flex' }}>
-                      <button className={`wizard-sub-btn-sm${selected.tags.includes(tag) ? ' selected' : ''}`}
+                      <button className={`wizard-sub-btn-sm${((selected.tags||[]) as string[]).includes(tag) ? ' selected' : ''}`}
                         onClick={() => {
-                          const nt = selected.tags.includes(tag) ? selected.tags.filter(t => t !== tag) : [...selected.tags, tag];
+                          const nt = ((selected.tags||[]) as string[]).includes(tag) ? ((selected.tags||[]) as string[]).filter(t => t !== tag) : [...(selected.tags||[]), tag];
                           updateCandidate(selected.id, { tags: nt });
                         }}>{tag}</button>
                       {!DEFAULT_TAGS.includes(tag) && (
@@ -483,11 +495,11 @@ export function VisitList({ blocks, userName, onAddBlock, onSelectBlock }: Props
                       <input style={{ ...inputStyle, width: 100 }} value={tagInput} placeholder="タグ名" autoFocus
                         onChange={e => setTagInput(e.target.value)}
                         onKeyDown={e => {
-                          if (e.key === 'Enter' && tagInput.trim()) { saveTags([...tagPresets, tagInput.trim()]); updateCandidate(selected.id, { tags: [...selected.tags, tagInput.trim()] }); setTagInput(''); setShowTagInput(false); }
+                          if (e.key === 'Enter' && tagInput.trim()) { saveTags([...tagPresets, tagInput.trim()]); updateCandidate(selected.id, { tags: [...(selected.tags||[]), tagInput.trim()] }); setTagInput(''); setShowTagInput(false); }
                           if (e.key === 'Escape') { setTagInput(''); setShowTagInput(false); }
                         }} />
                       <button className="btn" style={{ padding: '3px 8px', fontSize: 11 }}
-                        onClick={() => { if (tagInput.trim()) { saveTags([...tagPresets, tagInput.trim()]); updateCandidate(selected.id, { tags: [...selected.tags, tagInput.trim()] }); } setTagInput(''); setShowTagInput(false); }}>OK</button>
+                        onClick={() => { if (tagInput.trim()) { saveTags([...tagPresets, tagInput.trim()]); updateCandidate(selected.id, { tags: [...(selected.tags||[]), tagInput.trim()] }); } setTagInput(''); setShowTagInput(false); }}>OK</button>
                     </div>
                   )}
                 </div>
