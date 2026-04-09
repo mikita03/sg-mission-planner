@@ -378,7 +378,7 @@ function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { user
   const [expenses, setExpenses] = useState<ExpenseEntry[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ date: 'd1', category: 'タクシー', description: '', amount: '', currency: 'SGD' as 'SGD' | 'JPY', paidBy: userName || '' });
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0,10), category: 'タクシー', description: '', amount: '', currency: 'SGD' as 'SGD' | 'JPY', paidBy: userName || '' });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [uploading, setUploading] = useState(false);
@@ -546,7 +546,7 @@ function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { user
         <h3 style={{ fontFamily: 'Orbitron, monospace', fontSize: 14, color: 'var(--neon-amber)', letterSpacing: '.1em', margin: 0 }}>
           💳 EXPENSE LOG
         </h3>
-        <button className="btn btn-primary" style={{ fontSize: 12, padding: '6px 14px' }} onClick={() => { setShowForm(!showForm); setEditId(null); setForm({ date: 'd1', category: 'タクシー', description: '', amount: '', currency: 'SGD', paidBy: userName || '' }); }}>
+        <button className="btn btn-primary" style={{ fontSize: 12, padding: '6px 14px' }} onClick={() => { setShowForm(!showForm); setEditId(null); setForm({ date: new Date().toISOString().slice(0,10), category: 'タクシー', description: '', amount: '', currency: 'SGD', paidBy: userName || '' }); }}>
           {showForm ? 'CLOSE' : '+ ADD'}
         </button>
       </div>
@@ -557,9 +557,7 @@ function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { user
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 10 }}>
             <div>
               <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 2, display: 'block' }}>日付</label>
-              <select value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} style={{ ...inputStyle }}>
-                {DATE_KEYS.map((k, i) => <option key={k} value={k}>{DATE_LABELS[i]}</option>)}
-              </select>
+              <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} style={{ ...inputStyle }} />
             </div>
             <div>
               <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 2, display: 'block' }}>カテゴリ</label>
@@ -623,9 +621,9 @@ function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { user
                 </tr>
               </thead>
               <tbody>
-                {expenses.sort((a, b) => DATE_KEYS.indexOf(a.date) - DATE_KEYS.indexOf(b.date) || a.createdAt - b.createdAt).map(e => (
+                {expenses.sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt).map(e => (
                   <tr key={e.id}>
-                    <td style={{ fontFamily: 'Share Tech Mono', fontSize: 11, color: 'var(--text3)' }}>{e.date.toUpperCase()}</td>
+                    <td style={{ fontFamily: 'Share Tech Mono', fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{e.date.slice(5).replace('-','/')}</td>
                     <td style={{ fontSize: 11 }}>{e.category}</td>
                     <td>{e.description}</td>
                     <td style={{ textAlign: 'right', fontFamily: 'Share Tech Mono', whiteSpace: 'nowrap' }}>
