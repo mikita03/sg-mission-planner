@@ -371,8 +371,6 @@ export function Budget(_props: { userName?: string; isMobile?: boolean }) {
 
 /* ═══ Expense Tracker Sub-component ═══ */
 const EXP_STORAGE_KEY = 'sg_mission_expenses';
-const DATE_LABELS = ['Day 0 (出発)', 'Day 1', 'Day 2', 'Day 3', '前泊/その他'];
-const DATE_KEYS = ['d0', 'd1', 'd2', 'd3', 'other'];
 
 function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { userName?: string; rateJPY: number; displayCurrency: 'SGD' | 'JPY'; isMobile?: boolean }) {
   const [expenses, setExpenses] = useState<ExpenseEntry[]>([]);
