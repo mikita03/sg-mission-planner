@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ref, onValue, set } from 'firebase/database';
-import { db, isFirebaseConfigured } from '../firebase';
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, storage, isFirebaseConfigured } from '../firebase';
 import { ic } from '../constants/categories';
 import { triggerGlitch } from './Shared';
 
@@ -29,6 +30,7 @@ interface ExpenseEntry {
   amount: number;
   currency: 'SGD' | 'JPY';
   paidBy: string;
+  photoUrl: string;
   createdAt: number;
 }
 
@@ -377,6 +379,40 @@ function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { user
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ date: 'd1', category: 'タクシー', description: '', amount: '', currency: 'SGD' as 'SGD' | 'JPY', paidBy: userName || '' });
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
+  const [viewPhoto, setViewPhoto] = useState<string>('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Compress image to max 800px, JPEG 0.7
+  function compressImage(file: File): Promise<Blob> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 800;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => resolve(blob!), 'image/jpeg', 0.7);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setPhotoFile(f);
+    setPhotoPreview(URL.createObjectURL(f));
+  }
+
+  function clearPhoto() { setPhotoFile(null); setPhotoPreview(''); if (fileRef.current) fileRef.current.value = ''; }
 
   useEffect(() => {
     if (isFirebaseConfigured && db) {
@@ -400,27 +436,61 @@ function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { user
     if (isFirebaseConfigured && db) set(ref(db, 'expenses'), next);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const amt = toNum(form.amount);
     if (!amt || !form.description.trim()) return;
-    if (editId) {
-      saveExpenses(expenses.map(e => e.id === editId ? { ...e, date: form.date, category: form.category, description: form.description.trim(), amount: amt, currency: form.currency, paidBy: form.paidBy } : e));
-      setEditId(null);
+
+    setUploading(true);
+    let photoUrl = '';
+
+    // Upload photo if selected
+    if (photoFile && storage) {
+      try {
+        const compressed = await compressImage(photoFile);
+        const id = 'exp' + (++_idC).toString(36);
+        const sRef = storageRef(storage, `receipts/${id}.jpg`);
+        await uploadBytes(sRef, compressed, { contentType: 'image/jpeg' });
+        photoUrl = await getDownloadURL(sRef);
+
+        if (editId) {
+          saveExpenses(expenses.map(e => e.id === editId ? { ...e, date: form.date, category: form.category, description: form.description.trim(), amount: amt, currency: form.currency, paidBy: form.paidBy, photoUrl } : e));
+          setEditId(null);
+        } else {
+          const entry: ExpenseEntry = { id, date: form.date, category: form.category, description: form.description.trim(), amount: amt, currency: form.currency, paidBy: form.paidBy || userName || '不明', photoUrl, createdAt: Date.now() };
+          saveExpenses([...expenses, entry]);
+        }
+      } catch (err) { console.error('Photo upload error:', err); }
     } else {
-      const entry: ExpenseEntry = { id: 'exp' + (++_idC).toString(36), date: form.date, category: form.category, description: form.description.trim(), amount: amt, currency: form.currency, paidBy: form.paidBy || userName || '不明', createdAt: Date.now() };
-      saveExpenses([...expenses, entry]);
+      if (editId) {
+        saveExpenses(expenses.map(e => e.id === editId ? { ...e, date: form.date, category: form.category, description: form.description.trim(), amount: amt, currency: form.currency, paidBy: form.paidBy } : e));
+        setEditId(null);
+      } else {
+        const entry: ExpenseEntry = { id: 'exp' + (++_idC).toString(36), date: form.date, category: form.category, description: form.description.trim(), amount: amt, currency: form.currency, paidBy: form.paidBy || userName || '不明', photoUrl: '', createdAt: Date.now() };
+        saveExpenses([...expenses, entry]);
+      }
     }
+
     setForm({ ...form, description: '', amount: '' });
+    clearPhoto();
     setShowForm(false);
+    setUploading(false);
   }
 
   function startEdit(e: ExpenseEntry) {
     setForm({ date: e.date, category: e.category, description: e.description, amount: String(e.amount), currency: e.currency, paidBy: e.paidBy });
     setEditId(e.id);
+    clearPhoto();
     setShowForm(true);
   }
 
-  function deleteExpense(id: string) { saveExpenses(expenses.filter(e => e.id !== id)); }
+  async function deleteExpense(id: string) {
+    // Try delete photo from storage
+    const exp = expenses.find(e => e.id === id);
+    if (exp?.photoUrl && storage) {
+      try { await deleteObject(storageRef(storage, `receipts/${id}.jpg`)); } catch { /* may not exist */ }
+    }
+    saveExpenses(expenses.filter(e => e.id !== id));
+  }
 
   // Convert to SGD for totals
   function toSGD(amount: number, currency: 'SGD' | 'JPY') {
@@ -518,9 +588,20 @@ function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { user
               <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 2, display: 'block' }}>支払者</label>
               <input style={inputStyle} value={form.paidBy} placeholder="名前" onChange={e => setForm({ ...form, paidBy: e.target.value })} />
             </div>
+            <div>
+              <label style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 2, display: 'block' }}>📷 レシート写真</label>
+              <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect}
+                style={{ fontFamily: 'Rajdhani', fontSize: 12, color: 'var(--text2)', width: '100%' }} />
+              {photoPreview && (
+                <div style={{ marginTop: 6, position: 'relative', display: 'inline-block' }}>
+                  <img src={photoPreview} alt="preview" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border2)' }} />
+                  <button onClick={clearPhoto} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--neon-red)', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                </div>
+              )}
+            </div>
           </div>
-          <button className="btn btn-primary" style={{ width: '100%', padding: 10, fontSize: 13 }} onClick={handleSubmit} disabled={!form.description.trim() || !toNum(form.amount)}>
-            {editId ? 'UPDATE' : 'REGISTER'}
+          <button className="btn btn-primary" style={{ width: '100%', padding: 10, fontSize: 13 }} onClick={handleSubmit} disabled={uploading || !form.description.trim() || !toNum(form.amount)}>
+            {uploading ? 'UPLOADING...' : editId ? 'UPDATE' : 'REGISTER'}
           </button>
         </div>
       )}
@@ -537,6 +618,7 @@ function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { user
                   <th>内容</th>
                   <th style={{ textAlign: 'right' }}>金額</th>
                   <th>支払者</th>
+                  <th style={{ width: 36 }}>📷</th>
                   <th style={{ width: 50 }}></th>
                 </tr>
               </thead>
@@ -550,6 +632,12 @@ function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { user
                       {e.currency === 'SGD' ? `S$${e.amount}` : `¥${e.amount.toLocaleString()}`}
                     </td>
                     <td style={{ color: 'var(--text2)' }}>{e.paidBy}</td>
+                    <td>
+                      {e.photoUrl ? (
+                        <img src={e.photoUrl} alt="receipt" onClick={() => setViewPhoto(e.photoUrl)}
+                          style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border2)', cursor: 'pointer' }} />
+                      ) : <span style={{ color: 'var(--text3)', fontSize: 10 }}>—</span>}
+                    </td>
                     <td>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 11, padding: 2 }} onClick={() => startEdit(e)}>✏️</button>
@@ -597,6 +685,16 @@ function ExpenseTracker({ userName, rateJPY, displayCurrency, isMobile }: { user
       {expenses.length === 0 && !showForm && (
         <div style={{ fontFamily: 'Share Tech Mono', fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '20px 0' }}>
           No expenses recorded yet
+        </div>
+      )}
+
+      {/* Photo viewer modal */}
+      {viewPhoto && (
+        <div onClick={() => setViewPhoto('')} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <img src={viewPhoto} alt="receipt" style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 8, border: '2px solid var(--neon-cyan)', boxShadow: '0 0 30px rgba(0,229,255,.2)' }} />
+            <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: 'var(--text3)', textAlign: 'center', marginTop: 8 }}>TAP ANYWHERE TO CLOSE</div>
+          </div>
         </div>
       )}
     </div>
